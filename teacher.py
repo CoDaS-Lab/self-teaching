@@ -2,22 +2,27 @@ import numpy as np
 
 
 class Teacher:
-    def __init__(self):
+    def __init__(self, num_features):
         self.n = 0
         self.m = 2
-        self.num_features = 11
+        self.num_features = num_features
         self.num_labels = 2
         self.features = np.arange(self.num_features)
         self.labels = np.arange(self.num_labels)
         self.hyp_space = self.create_hyp_space(self.num_features)
         self.num_hyp = len(self.hyp_space)
-        self.teacher_prior = np.array([1 / self.num_hyp
+        self.learner_prior = np.array([[[1 / self.num_hyp
+                                         for _ in range(self.num_labels)]
+                                        for _ in range(self.num_features)]
                                        for _ in range(self.num_hyp)])
-
-        self.learner_prior = np.array([1 / self.num_hyp
-                                       for _ in range(self.num_hyp)])
-        self.teacher_posterior = None
-        self.learner_posterior = None
+        self.teacher_likelihood = np.array([[[1 / self.num_hyp
+                                              for _ in range(self.num_labels)]
+                                             for _ in range(self.num_features)]
+                                            for _ in range(self.num_hyp)])
+        self.learner_posterior = np.array([[[1 / self.num_hyp
+                                             for _ in range(self.num_labels)]
+                                            for _ in range(self.num_features)]
+                                           for _ in range(self.num_hyp)])
 
     def create_hyp_space(self, num_features):
         hyp_space = []
@@ -43,58 +48,70 @@ class Teacher:
                     else:
                         lik[i, j, k] = 0
         return lik
-        # marginalize over y
-        # normalize over x
 
-    def learn_posterior(self):
+    def get_learner_posterior(self):
+        return self.learner_posterior
+
+    def get_teacher_likelihood(self):
+        return self.teacher_likelihood
+
+    def update_learner_posterior(self):
         """Calculates the unnormalized posterior across all 
         possible feature/label observations"""
-        lik = self.likelihood()
-        self.learner_posterior = (self.learner_prior *
-                                  lik.T).T  # using broadcasting
 
-    def teach_likelihood(self):
-        if self.teacher_lik is None:
-            # initialize to random
-            self.teacher_lik = np.ones(self.num_features)
-            self.teacher_lik = self.teacher_lik / np.sum(self.teacher_lik)
-        else:
-            # calculate teaching likelihood
-            # TODO: fill in eq
-            return self.teacher_lik
+        lik = self.likelihood()  # p(y|x, h)
+        teacher_likelihood = self.get_teacher_likelihood()
+        # teacher_likelihood = self.selection_likelihood_two()
+        # teacher_likelihood = self.selection_likelihood()  # p_t(x|h)
 
-    def learn_likelihood(self):
-        return 0
+        # calculate posterior and normalize
+        self.learner_posterior = lik * teacher_likelihood * self.learner_prior
+        self.learner_posterior = self.learner_posterior / \
+            np.sum(self.learner_posterior, axis=0)
 
-    def teach_posterior_predictive(self):
-        """Calculates the posterior predictive over labels for each feature"""
+    def update_teacher_likelihood(self):
+        """Calculates the likelihood of selecting data points by transforming the 
+        posterior p(y|x, h) to p(x|h)"""
 
-        # for x in self.features:
-        #     for y in self.labels:
-        #         current_posterior = self.learner_posterior[:, x, y]
-        #         current_hyps = [i for i, hyp in enumerate(self.hyp_space)
-        #                         if hyp[x] == y]
+        # uniform joint over data, which is broadcasted into correct shape
+        prob_joint_data = np.array([[1 / (self.num_features * self.num_labels)
+                                     for _ in range(self.num_labels)]
+                                    for _ in range(self.num_features)])  # p(x, y)
+        prob_joint_data = np.tile(prob_joint_data, (self.num_hyp, 1, 1))
 
-        # get indices of hyp_space consistent with hyp[x] == y
+        # multiply with posterior to get overall joint
+        # p(h, x, y) = p(h|, x, y) * p(x, y)
+        learner_posterior = self.get_learner_posterior()
+        prob_joint = learner_posterior * prob_joint_data
 
-        # get these from learner_post
+        # marginalize over y, i.e. p(h, x), and broadcast result
+        prob_joint_hyp_features = np.sum(prob_joint, axis=2)
+        prob_joint_hyp_features = np.repeat(
+            prob_joint_hyp_features, self.num_labels).reshape(
+                self.num_hyp, self.num_features, self.num_labels)
 
-        # sum over/hypothesis averaging
-        self.posterior_predictive = np.zeros(
-            (self.num_features, self.num_labels))
-        self.posterior_predictive[:, 0] = np.sum(
-            self.hyp_space, axis=0) / len(self.hyp_space)
-        self.posterior_predictive[:, 1] = 1 - np.sum(
-            self.hyp_space, axis=0) / len(self.hyp_space)
+        # divide by prior over hypotheses to get conditional prob
+        # p(x|h) = p(h, x)/p(h)
+        prob_conditional_features = prob_joint_hyp_features / self.learner_prior
 
-    def teach_selection(self):
-        """Returns a probability distribution over the points to select for teaching"""
-        assert self.learner_posterior != None
-        assert self.posterior_predictive != None
+        self.teacher_likelihood = prob_conditional_features
 
-        joint_prob = ((self.learner_posterior *
-                       self.posterior_predictive).T * self.teacher_prior).T
-        joint_prob_no_labels = np.sum(joint_prob, axis=2)
-        marginalization_constant = np.sum(joint_prob, axis=(1, 2))
-        self.teacher_selection = (
-            joint_prob_no_labels.T / marginalization_constant).T
+    def cooperative_inference(self, n_iters):
+        """Run selection and updating equations until convergence"""
+        for i in range(n_iters):
+            self.update_learner_posterior()
+            self.update_teacher_likelihood()
+
+
+if __name__ == "__main__":
+    num_features = 4
+    teach = Teacher(num_features)
+    teach.update_learner_posterior()
+    teach.update_teacher_likelihood()
+    print(teach.get_teacher_likelihood())
+    teach.update_learner_posterior()
+    teach.update_teacher_likelihood()
+    print(teach.get_teacher_likelihood())
+    teach.update_learner_posterior()
+    teach.update_teacher_likelihood()
+    print(teach.get_teacher_likelihood())
