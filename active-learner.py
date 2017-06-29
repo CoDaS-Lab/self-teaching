@@ -7,7 +7,7 @@ class ActiveLearner:
         assert(num_features > 0)
 
         self.d = []  # observed data points
-        self.n = 0  # number of observed data points
+        self.num_obs = 0  # number of observed data points
         self.m = 2  # number of possible y values
         self.num_features = num_features
         self.hyp_space = self.create_hyp_space(self.num_features)
@@ -15,6 +15,8 @@ class ActiveLearner:
         self.prior = np.array([1 / self.num_hyp
                                for _ in range(self.num_hyp)])
         self.posterior = self.prior
+        self.true_hyp_idx = np.random.randint(len(self.hyp_space))
+        self.true_hyp = self.hyp_space[self.true_hyp_idx]
 
     def create_hyp_space(self, num_features):
         """Creates a hypothesis space of specified size"""
@@ -91,10 +93,10 @@ class ActiveLearner:
         # print("eigvec mean", np.mean(eig_vec))
         return np.mean(eig_vec)
 
-    def run(self, true_hyp):
+    def run(self):
         """Runs the active learner until the true hypothesis is discovered"""
 
-        assert true_hyp in self.hyp_space
+        # assert self.true_hyp in self.hyp_space
 
         queries = np.arange(self.num_features)
 
@@ -108,24 +110,27 @@ class ActiveLearner:
             query = queries[np.random.choice(np.where(eig == np.amax(eig))[0])]
 
             # update model
-            query_y = true_hyp[query]
+            query_y = self.true_hyp[query]
             self.update(query, query_y)
 
             # remove query from set of queries
             query_idx = np.argwhere(queries == query)
             queries = np.delete(queries, query_idx)
 
-            self.n += 1
+            self.num_obs += 1
 
         # TODO: return actual posterior to check with true hyp
-        return self.posterior, self.n
+        return self.num_obs
 
 
 if __name__ == "__main__":
-    num_features = 11
+    num_features = 8
+    n_iters = 100
+    num_obs_sum = 0
 
-    al = ActiveLearner(num_features)
+    for i in range(n_iters):
+        active_learner = ActiveLearner(num_features)
+        num_obs = active_learner.run()
+        num_obs_sum += num_obs
 
-    # TODO: run multiple simulations to examine average time to find hypothesis
-    true_hyp = np.array([1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
-    al.run(true_hyp)
+    print(num_obs_sum / n_iters)
