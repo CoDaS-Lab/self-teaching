@@ -7,6 +7,7 @@ class Teacher:
         self.num_labels = 2
         self.observed_features = np.array([])
         self.observed_labels = np.array([])
+        self.num_obs = 0
         self.features = np.arange(self.num_features)
         self.labels = np.arange(self.num_labels)
         self.hyp_space = self.create_hyp_space(self.num_features)
@@ -148,6 +149,7 @@ class Teacher:
             teaching_sample_label = self.true_hyp[teaching_sample_feature]
             np.append(self.observed_features, teaching_sample_feature)
             np.append(self.observed_labels, teaching_sample_label)
+            self.num_obs += 1
 
             # get learner posterior and broadcast
             updated_learner_posterior = self.learner_posterior[:, teaching_sample_feature,
@@ -164,10 +166,17 @@ class Teacher:
                 hypothesis_found = True
                 true_hyp_found_idx = np.where(updated_learner_posterior == 1)
 
-        return true_hyp_found_idx
+        return true_hyp_found_idx, self.num_obs
 
 
 if __name__ == "__main__":
-    num_features = 4
-    teacher = Teacher(num_features)
-    teacher.run()
+    num_features = 8
+    n_iters = 100
+    num_obs_sum = 0
+
+    for i in range(n_iters):
+        teacher = Teacher(num_features)
+        true_hyp, num_obs = teacher.run()
+        num_obs_sum += num_obs
+
+    print(num_obs_sum / n_iters)
