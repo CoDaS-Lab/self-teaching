@@ -23,6 +23,7 @@ class Teacher:
         self.learner_posterior = self.learner_prior
         self.true_hyp_idx = np.random.randint(len(self.hyp_space))
         self.true_hyp = self.hyp_space[self.true_hyp_idx]
+        self.posterior_true_hyp = np.ones(self.num_features)
 
     def create_hyp_space(self, num_features):
         hyp_space = []
@@ -113,6 +114,16 @@ class Teacher:
         teacher_posterior = self.get_teacher_posterior()
         teacher_posterior_true_hyp = teacher_posterior[self.true_hyp_idx, :, 0]
 
+        # set probability of selecting observed features to be zero
+        # print(teacher_posterior_true_hyp)
+        # print(self.observed_features)
+        # print(teacher_posterior_true_hyp)
+        # print("observed feature:", self.observed_features)
+        self.observed_features = self.observed_features.astype(int)
+        if self.observed_features.size != 0:
+            teacher_posterior_true_hyp[self.observed_features] = 0
+            # print(teacher_posterior_true_hyp)
+
         # select data point, and normalize if possible
         # if np.all(np.sum(teacher_posterior_true_hyp)) != 0:
         teacher_data = np.random.choice(np.arange(self.num_features),
@@ -137,7 +148,7 @@ class Teacher:
         # self.true_hyp = self.hyp_space[self.true_hyp_idx]
 
         hypothesis_found = False
-        true_hyp_found_idx = -1
+        # true_hyp_found_idx = -1
 
         while hypothesis_found != True:
             # run updates for learner posterior and teacher likelihood until convergence
@@ -146,10 +157,12 @@ class Teacher:
 
             # sample data point from teacher
             teaching_sample_feature = self.sample_teacher_posterior()
+            # print("sampled feature:", teaching_sample_feature)
             teaching_sample_label = self.true_hyp[teaching_sample_feature]
-            np.append(self.observed_features, teaching_sample_feature)
-            np.append(self.observed_labels, teaching_sample_label)
-            self.num_obs += 1
+            self.observed_features = np.append(
+                self.observed_features, teaching_sample_feature)
+            self.observed_labels = np.append(
+                self.observed_labels, teaching_sample_label)
 
             # get learner posterior and broadcast
             updated_learner_posterior = self.learner_posterior[:, teaching_sample_feature,
@@ -161,22 +174,26 @@ class Teacher:
                                                                           self.num_features,
                                                                           self.num_labels)
 
+            self.posterior_true_hyp[self.num_obs] = updated_learner_posterior[self.true_hyp_idx]
+
             # check if any hypothesis has probability one
             if np.any(updated_learner_posterior == 1):
                 hypothesis_found = True
                 true_hyp_found_idx = np.where(updated_learner_posterior == 1)
 
-        return true_hyp_found_idx, self.num_obs
+            self.num_obs += 1
+
+        return self.num_obs, self.posterior_true_hyp
 
 
 if __name__ == "__main__":
     num_features = 8
-    n_iters = 100
-    num_obs_sum = 0
+    n_iters = 1
+    num_obs_arr = np.array([])
 
     for i in range(n_iters):
         teacher = Teacher(num_features)
         true_hyp, num_obs = teacher.run()
-        num_obs_sum += num_obs
+        num_obs_arr = np.append(num_obs_arr, num_obs)
 
-    print(num_obs_sum / n_iters)
+    print(np.bincount(num_obs_arr.astype(int)) / n_iters)

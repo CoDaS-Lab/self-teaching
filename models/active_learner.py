@@ -17,6 +17,7 @@ class ActiveLearner:
         self.posterior = self.prior
         self.true_hyp_idx = np.random.randint(len(self.hyp_space))
         self.true_hyp = self.hyp_space[self.true_hyp_idx]
+        self.posterior_true_hyp = np.ones(self.num_features)
 
     def create_hyp_space(self, num_features):
         """Creates a hypothesis space of specified size"""
@@ -113,6 +114,8 @@ class ActiveLearner:
             query_y = self.true_hyp[query]
             self.update(query, query_y)
 
+            self.posterior_true_hyp[self.num_obs] = self.posterior[self.true_hyp_idx]
+
             # remove query from set of queries
             query_idx = np.argwhere(queries == query)
             queries = np.delete(queries, query_idx)
@@ -120,17 +123,17 @@ class ActiveLearner:
             self.num_obs += 1
 
         # TODO: return actual posterior to check with true hyp
-        return self.num_obs
+        return self.num_obs, self.posterior_true_hyp
 
 
 if __name__ == "__main__":
     num_features = 8
     n_iters = 100
-    num_obs_sum = 0
+    num_obs_arr = np.array([])
 
     for i in range(n_iters):
         active_learner = ActiveLearner(num_features)
         num_obs = active_learner.run()
-        num_obs_sum += num_obs
+        num_obs_arr = np.append(num_obs_arr, num_obs)
 
-    print(num_obs_sum / n_iters)
+    print(np.bincount(num_obs_arr.astype(int)) / n_iters)

@@ -19,6 +19,7 @@ class RandomLearner():
         self.posterior = self.prior
         self.true_hyp_idx = np.random.randint(len(self.hyp_space))
         self.true_hyp = self.hyp_space[self.true_hyp_idx]
+        self.posterior_true_hyp = np.ones(self.num_features)
 
     def create_hyp_space(self, num_features):
         hyp_space = []
@@ -73,6 +74,8 @@ class RandomLearner():
                                            self.num_features,
                                            self.num_labels)
 
+            self.posterior_true_hyp[self.num_obs] = updated_learner_posterior[self.true_hyp_idx]
+
             # increment number of observations
             self.num_obs += 1
 
@@ -85,17 +88,17 @@ class RandomLearner():
                 hypothesis_found = True
                 true_hyp_found_idx = np.where(updated_learner_posterior == 1)
 
-        return true_hyp_found_idx, self.num_obs
+        return self.num_obs, self.posterior_true_hyp
 
 
 if __name__ == "__main__":
     num_features = 8
-    n_iters = 100
-    num_obs_sum = 0
+    n_iters = 1000
+    num_obs_arr = np.array([])
 
     for i in range(n_iters):
         random_learner = RandomLearner(num_features)
         true_hyp, num_obs = random_learner.run()
-        num_obs_sum += num_obs
+        num_obs_arr = np.append(num_obs_arr, num_obs)
 
-    print(num_obs_sum / n_iters)
+    print(np.bincount(num_obs_arr.astype(int)) / n_iters)
