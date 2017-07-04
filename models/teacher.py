@@ -2,36 +2,49 @@ import numpy as np
 
 
 class Teacher:
-    def __init__(self, num_features):
-        self.num_features = num_features
+    def __init__(self, n_features):
+        self.n_features = n_features
         self.num_labels = 2
         self.observed_features = np.array([])
         self.observed_labels = np.array([])
         self.num_obs = 0
-        self.features = np.arange(self.num_features)
+        self.features = np.arange(self.n_features)
         self.labels = np.arange(self.num_labels)
-        self.hyp_space = self.create_hyp_space(self.num_features)
+        # self.hyp_space = self.create_hyp_space(self.n_features)
+        self.hyp_space = self.create_boundary_hyp_space()
         self.num_hyp = len(self.hyp_space)
         self.learner_prior = np.array([[[1 / self.num_hyp
                                          for _ in range(self.num_labels)]
-                                        for _ in range(self.num_features)]
+                                        for _ in range(self.n_features)]
                                        for _ in range(self.num_hyp)])
         self.teacher_posterior = np.array([[[1 / self.num_hyp
                                              for _ in range(self.num_labels)]
-                                            for _ in range(self.num_features)]
+                                            for _ in range(self.n_features)]
                                            for _ in range(self.num_hyp)])
         self.learner_posterior = self.learner_prior
         self.true_hyp_idx = np.random.randint(len(self.hyp_space))
         self.true_hyp = self.hyp_space[self.true_hyp_idx]
-        self.posterior_true_hyp = np.ones(self.num_features)
+        self.posterior_true_hyp = np.ones(self.n_features + 1)
+        self.posterior_true_hyp[0] = 1 / self.num_hyp
 
-    def create_hyp_space(self, num_features):
+    def create_hyp_space(self):
+        """Creates a hypothesis space of concepts"""
         hyp_space = []
-        for i in range(1, num_features + 1):
-            for j in range(num_features - i + 1):
-                hyp = [0 for _ in range(num_features)]
+        for i in range(1, self.n_features + 1):
+            for j in range(self.n_features - i + 1):
+                hyp = [0 for _ in range(self.n_features)]
                 hyp[j:j + i] = [1 for _ in range(i)]
                 hyp_space.append(hyp)
+        hyp_space = np.array(hyp_space)
+        return hyp_space
+
+    def create_boundary_hyp_space(self):
+        """Creates a hypothesis space of concepts defined by a linear boundary"""
+        hyp_space = []
+        for i in range(self.n_features + 1):
+            hyp = [1 for _ in range(self.n_features)]
+            hyp[:i] = [0 for _ in range(i)]
+            hyp_space.append(hyp)
         hyp_space = np.array(hyp_space)
         return hyp_space
 
@@ -41,7 +54,7 @@ class Teacher:
 
         # TODO: modify function to take in multiple observations
 
-        lik = np.ones((self.num_hyp, self.num_features, self.num_labels))
+        lik = np.ones((self.num_hyp, self.n_features, self.num_labels))
 
         for i, hyp in enumerate(self.hyp_space):
             for j, feature in enumerate(self.features):
@@ -84,9 +97,9 @@ class Teacher:
         posterior p(y|x, h) to p(x|h)"""
 
         # uniform joint over data, which is broadcasted into correct shape
-        prob_joint_data = np.array([[1 / (self.num_features * self.num_labels)
+        prob_joint_data = np.array([[1 / (self.n_features * self.num_labels)
                                      for _ in range(self.num_labels)]
-                                    for _ in range(self.num_features)])  # p(x, y)
+                                    for _ in range(self.n_features)])  # p(x, y)
 
         prob_joint_data = np.tile(prob_joint_data, (self.num_hyp, 1, 1))
 
@@ -99,7 +112,7 @@ class Teacher:
         prob_joint_hyp_features = np.sum(prob_joint, axis=2)
         prob_joint_hyp_features = np.repeat(
             prob_joint_hyp_features, self.num_labels).reshape(
-                self.num_hyp, self.num_features, self.num_labels)
+                self.num_hyp, self.n_features, self.num_labels)
 
         # divide by prior over hypotheses to get conditional prob
         # p(x|h) = p(h, x)/p(h)
@@ -126,7 +139,7 @@ class Teacher:
 
         # select data point, and normalize if possible
         # if np.all(np.sum(teacher_posterior_true_hyp)) != 0:
-        teacher_data = np.random.choice(np.arange(self.num_features),
+        teacher_data = np.random.choice(np.arange(self.n_features),
                                         p=teacher_posterior_true_hyp /
                                         np.nansum(teacher_posterior_true_hyp))
         teacher_data = np.nan_to_num(teacher_data)
@@ -170,29 +183,31 @@ class Teacher:
 
             # update new learner posterior
             self.learner_posterior = np.repeat(updated_learner_posterior, self.num_labels *
-                                               self.num_features).reshape(self.num_hyp,
-                                                                          self.num_features,
-                                                                          self.num_labels)
-
-            self.posterior_true_hyp[self.num_obs] = updated_learner_posterior[self.true_hyp_idx]
+                                               self.n_features).reshape(self.num_hyp,
+                                                                        self.n_features,
+                                                                        self.num_labels)
 
             # check if any hypothesis has probability one
             if np.any(updated_learner_posterior == 1):
                 hypothesis_found = True
                 true_hyp_found_idx = np.where(updated_learner_posterior == 1)
 
+            # increment observations
             self.num_obs += 1
+
+            # save posterior probability of true hypothesis
+            self.posterior_true_hyp[self.num_obs] = updated_learner_posterior[self.true_hyp_idx]
 
         return self.num_obs, self.posterior_true_hyp
 
 
 if __name__ == "__main__":
-    num_features = 8
+    n_features = 8
     n_iters = 1
     num_obs_arr = np.array([])
 
     for i in range(n_iters):
-        teacher = Teacher(num_features)
+        teacher = Teacher(n_features)
         true_hyp, num_obs = teacher.run()
         num_obs_arr = np.append(num_obs_arr, num_obs)
 

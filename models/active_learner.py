@@ -3,33 +3,45 @@ import matplotlib.pyplot as plt
 
 
 class ActiveLearner:
-    def __init__(self, num_features):
-        assert(num_features > 0)
+    def __init__(self, n_features):
+        assert(n_features > 0)
 
         self.d = []  # observed data points
         self.num_obs = 0  # number of observed data points
         self.m = 2  # number of possible y values
-        self.num_features = num_features
-        self.hyp_space = self.create_hyp_space(self.num_features)
+        self.n_features = n_features
+        # self.hyp_space = self.create_hyp_space(self.n_features)
+        self.hyp_space = self.create_boundary_hyp_space()
         self.num_hyp = len(self.hyp_space)
         self.prior = np.array([1 / self.num_hyp
                                for _ in range(self.num_hyp)])
         self.posterior = self.prior
         self.true_hyp_idx = np.random.randint(len(self.hyp_space))
         self.true_hyp = self.hyp_space[self.true_hyp_idx]
-        self.posterior_true_hyp = np.ones(self.num_features)
+        self.posterior_true_hyp = np.ones(self.n_features + 1)
+        self.posterior_true_hyp[0] = self.posterior[self.true_hyp_idx]
 
-    def create_hyp_space(self, num_features):
+    def create_hyp_space(self, n_features):
         """Creates a hypothesis space of specified size"""
 
-        assert num_features > 0
+        assert n_features > 0
 
         hyp_space = []
-        for i in range(1, num_features + 1):
-            for j in range(num_features - i + 1):
-                hyp = [0 for _ in range(num_features)]
+        for i in range(1, n_features + 1):
+            for j in range(n_features - i + 1):
+                hyp = [0 for _ in range(n_features)]
                 hyp[j:j + i] = [1 for _ in range(i)]
                 hyp_space.append(hyp)
+        hyp_space = np.array(hyp_space)
+        return hyp_space
+
+    def create_boundary_hyp_space(self):
+        """Creates a hypothesis space of concepts defined by a linear boundary"""
+        hyp_space = []
+        for i in range(self.n_features + 1):
+            hyp = [1 for _ in range(self.n_features)]
+            hyp[:i] = [0 for _ in range(i)]
+            hyp_space.append(hyp)
         hyp_space = np.array(hyp_space)
         return hyp_space
 
@@ -99,7 +111,7 @@ class ActiveLearner:
 
         # assert self.true_hyp in self.hyp_space
 
-        queries = np.arange(self.num_features)
+        queries = np.arange(self.n_features)
 
         # while np.nonzero(self.posterior)[0].shape[0] > 1:
         while np.count_nonzero(self.posterior) > 1:
@@ -114,25 +126,27 @@ class ActiveLearner:
             query_y = self.true_hyp[query]
             self.update(query, query_y)
 
-            self.posterior_true_hyp[self.num_obs] = self.posterior[self.true_hyp_idx]
-
             # remove query from set of queries
             query_idx = np.argwhere(queries == query)
             queries = np.delete(queries, query_idx)
 
+            # increment number of observations
             self.num_obs += 1
+
+            # save current posterior of true hypothesis
+            self.posterior_true_hyp[self.num_obs] = self.posterior[self.true_hyp_idx]
 
         # TODO: return actual posterior to check with true hyp
         return self.num_obs, self.posterior_true_hyp
 
 
 if __name__ == "__main__":
-    num_features = 8
+    n_features = 8
     n_iters = 100
     num_obs_arr = np.array([])
 
     for i in range(n_iters):
-        active_learner = ActiveLearner(num_features)
+        active_learner = ActiveLearner(n_features)
         num_obs = active_learner.run()
         num_obs_arr = np.append(num_obs_arr, num_obs)
 
