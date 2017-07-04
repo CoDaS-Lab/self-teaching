@@ -15,9 +15,9 @@ if __name__ == "__main__":
     teacher_obs = np.zeros(n_iters)
 
     # save posterior probability for each iteration
-    active_post = np.zeros((n_iters, n_features))
-    random_post = np.zeros((n_iters, n_features))
-    teacher_post = np.zeros((n_iters, n_features))
+    active_post = np.zeros((n_iters, n_features + 1))
+    random_post = np.zeros((n_iters, n_features + 1))
+    teacher_post = np.zeros((n_iters, n_features + 1))
 
     for i in range(n_iters):
         # create active, teacher and random learners
@@ -30,12 +30,27 @@ if __name__ == "__main__":
         random_obs[i], random_post[i, :] = random_learner.run()
         teacher_obs[i], teacher_post[i, :] = teacher.run()
 
-    features = np.arange(n_features + 1)
-    active_learner_counts = np.bincount(active_obs.astype(int)) / n_iters
-    random_learner_counts = np.bincount(random_obs.astype(int)) / n_iters
-    teacher_counts = np.bincount(teacher_obs.astype(int)) / n_iters
+    # calculate mean posterior probability of true hypothesis
+    active_post_mean = np.mean(active_post, axis=0)
+    random_post_mean = np.mean(random_post, axis=0)
+    teacher_post_mean = np.mean(teacher_post, axis=0)
 
-    plt.bar(features, active_learner_counts, 0.2)
-    plt.bar(features + 0.2, random_learner_counts, 0.2)
-    plt.bar(features + 0.4, teacher_counts, 0.2)
+    features = np.arange(n_features + 1)
+
+    plt.plot(features, active_post_mean, '-og')
+    plt.plot(features, random_post_mean, '-or')
+    plt.plot(features, teacher_post_mean, '-ob')
     plt.show()
+
+    # active_learner_counts = np.bincount(active_obs.astype(int)) / n_iters
+    # random_learner_counts = np.bincount(random_obs.astype(int)) / n_iters
+    # teacher_counts = np.bincount(teacher_obs.astype(int)) / n_iters
+
+    # plt.bar(features, active_learner_counts, 0.2)
+    # plt.bar(features + 0.2, random_learner_counts, 0.2)
+    # plt.bar(features + 0.4, teacher_counts, 0.2)
+    # plt.show()
+    # for i in range(n_iters):
+    #     plt.plot(features, random_post[i, :], '-ro', alpha=0.1)
+
+    # plt.show()
