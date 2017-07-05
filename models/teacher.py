@@ -128,30 +128,30 @@ class Teacher:
         teacher_posterior_true_hyp = teacher_posterior[self.true_hyp_idx, :, 0]
 
         # set probability of selecting observed features to be zero
-        # print(teacher_posterior_true_hyp)
-        # print(self.observed_features)
-        # print(teacher_posterior_true_hyp)
-        # print("observed feature:", self.observed_features)
         self.observed_features = self.observed_features.astype(int)
         if self.observed_features.size != 0:
             teacher_posterior_true_hyp[self.observed_features] = 0
             # print(teacher_posterior_true_hyp)
 
+        # select max
+        teacher_data = self.features[np.random.choice(
+            np.where(teacher_posterior_true_hyp == np.amax(teacher_posterior_true_hyp))[0])]
+
         # select data point, and normalize if possible
         # if np.all(np.sum(teacher_posterior_true_hyp)) != 0:
-        teacher_data = np.random.choice(np.arange(self.n_features),
-                                        p=teacher_posterior_true_hyp /
-                                        np.nansum(teacher_posterior_true_hyp))
-        teacher_data = np.nan_to_num(teacher_data)
+        # teacher_data = np.random.choice(np.arange(self.n_features),
+        #                                 p=teacher_posterior_true_hyp /
+        #                                 np.nansum(teacher_posterior_true_hyp))
+        # teacher_data = np.nan_to_num(teacher_data)
 
         return teacher_data
 
-    def cooperative_inference(self, n_iters):
-        """Run selection and updating equations until convergence"""
-        # TODO: run until convergence
-        for i in range(n_iters):
-            self.update_learner_posterior()
-            self.update_teacher_posterior()
+    # def cooperative_inference(self, n_iters):
+    #     """Run selection and updating equations until convergence"""
+    #     # TODO: run until convergence
+    #     for i in range(n_iters):
+    #         self.update_learner_posterior()
+    #         self.update_teacher_posterior()
 
     def run(self):
         """Run teacher until correct hypothesis is determined"""
