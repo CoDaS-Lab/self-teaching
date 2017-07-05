@@ -99,12 +99,16 @@ class ActiveLearner:
     def expected_information_gain(self, x):
         """Calculate the expected information gain across all possible outcomes"""
         eig_vec = np.zeros(self.m)
+        eig_weights = np.zeros(self.m)
         for i, y in enumerate(range(self.m)):
+            # calculate information gain
             eig_vec[i] = self.information_gain(x, y)
 
-        # print("eigvec", eig_vec)
-        # print("eigvec mean", np.mean(eig_vec))
-        return np.mean(eig_vec)
+            # calculate posterior prob consistent with this observation
+            eig_idx = np.where(self.hyp_space[:, x] == y)
+            eig_weights[i] = np.sum(self.posterior[eig_idx])
+
+        return np.dot(eig_vec, eig_weights)
 
     def run(self):
         """Runs the active learner until the true hypothesis is discovered"""
