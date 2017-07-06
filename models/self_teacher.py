@@ -1,7 +1,7 @@
 import numpy as np
 
 
-class Teacher:
+class SelfTeacher:
     def __init__(self, n_features):
         self.n_features = n_features
         self.n_labels = 2
@@ -10,17 +10,20 @@ class Teacher:
         self.n_obs = 0
         self.features = np.arange(self.n_features)
         self.labels = np.arange(self.n_labels)
-        # self.hyp_space = self.create_hyp_space(self.n_features)
         self.hyp_space = self.create_boundary_hyp_space()
         self.n_hyp = len(self.hyp_space)
         self.learner_prior = np.array([[[1 / self.n_hyp
                                          for _ in range(self.n_labels)]
                                         for _ in range(self.n_features)]
                                        for _ in range(self.n_hyp)])
-        self.teacher_posterior = np.array([[[1 / self.n_hyp
-                                             for _ in range(self.n_labels)]
-                                            for _ in range(self.n_features)]
-                                           for _ in range(self.n_hyp)])
+        self.teacher_prior = np.array([[[1 / self.n_features
+                                         for _ in range(self.n_labels)]
+                                        for _ in range(self.n_features)]
+                                       for _ in range(self.n_hyp)])
+        self.self_teaching_posterior = np.array([[[1 / self.n_hyp
+                                                   for _ in range(self.n_labels)]
+                                                  for _ in range(self.n_features)]
+                                                 for _ in range(self.n_hyp)])
         self.learner_posterior = self.learner_prior
         self.true_hyp_idx = np.random.randint(len(self.hyp_space))
         self.true_hyp = self.hyp_space[self.true_hyp_idx]
@@ -28,7 +31,7 @@ class Teacher:
         self.posterior_true_hyp[0] = 1 / self.n_hyp
 
     def create_hyp_space(self):
-        """Creates a hypothesis space of concepts"""
+        """Creates a hypothesis space of line concepts"""
         hyp_space = []
         for i in range(1, self.n_features + 1):
             for j in range(self.n_features - i + 1):
@@ -68,34 +71,35 @@ class Teacher:
     def get_learner_posterior(self):
         return self.learner_posterior
 
-    def get_teacher_posterior(self):
-        return self.teacher_posterior
+    def get_self_teaching_posterior(self):
+        return self.self_teaching_posterior
 
     def set_learner_posterior(self, learner_posterior):
         self.learner_posterior = learner_posterior
 
-    def set_teacher_posterior(self, teacher_posterior):
-        self.teacher_posterior = teacher_posterior
+    def set_self_teaching_posterior(self, self_teaching_posterior):
+        self.self_teaching_posterior = self_teaching_posterior
 
     def update_learner_posterior(self):
         """Calculates the unnormalized posterior across all 
         possible feature/label observations"""
 
         lik = self.likelihood()  # p(y|x, h)
-        teacher_posterior = self.get_teacher_posterior()
+        self_teaching_posterior = self.get_self_teaching_posterior()
 
         # calculate posterior and normalize
-        self.learner_posterior = lik * teacher_posterior * \
+        self.learner_posterior = lik * self_teaching_posterior * \
             self.learner_posterior  # use existing posterior as prior
 
         self.learner_posterior = self.learner_posterior / \
             np.nansum(self.learner_posterior, axis=0)
         self.learner_posterior = np.nan_to_num(self.learner_posterior)
 
-    def update_teacher_posterior(self):
-        """Calculates the posterior of selecting data points by transforming the 
-        posterior p(y|x, h) to p(x|h)"""
+    def update_self_teaching_posterior(self):
+        """Calculates the posterior of self teaching for determining which points
+        to actively select using the teaching equations"""
 
+        # use same code as teacher.py to calculate teaching posterior
         # uniform joint over data, which is broadcasted into correct shape
         prob_joint_data = np.array([[1 / (self.n_features * self.n_labels)
                                      for _ in range(self.n_labels)]
@@ -118,71 +122,67 @@ class Teacher:
         # p(x|h) = p(h, x)/p(h)
         prob_conditional_features = prob_joint_hyp_features / self.learner_prior
 
-        self.teacher_posterior = prob_conditional_features
+        # calculate equation for self-teaching
+        # p(x) = \sum_h p(x|h) * p(h)
+        self_teaching_posterior = np.sum(prob_conditional_features * learner_posterior,
+                                         axis=(0, 2))
 
-    def sample_teacher_posterior(self):
-        """Randomly samples a data point based off the teacher's posterior"""
+        # normalize
+        self_teaching_posterior = self_teaching_posterior / \
+            np.sum(self_teaching_posterior)
 
-        # get teacher likelihood and select data point
-        teacher_posterior = self.get_teacher_posterior()
-        teacher_posterior_true_hyp = teacher_posterior[self.true_hyp_idx, :, 0]
+        # braodcast self teaching posterior to the right shape, and transpose
+        self_teaching_posterior = np.broadcast_to(self_teaching_posterior,
+                                                  (self.n_hyp,
+                                                   self.n_labels,
+                                                   self.n_features))
+
+        # save posterior
+        self.self_teaching_posterior = np.array(
+            [post.T for post in self_teaching_posterior])
+
+    def sample_self_teaching_posterior(self):
+        """Sample a data point based off the self-teaching posterior"""
+
+        # get teacher posterior and select a data point
+        self_teaching_posterior = self.get_self_teaching_posterior()
+        self_teaching_posterior_sample = self_teaching_posterior[0, :, 0]
 
         # set probability of selecting observed features to be zero
         self.observed_features = self.observed_features.astype(int)
         if self.observed_features.size != 0:
-            teacher_posterior_true_hyp[self.observed_features] = 0
-            # print(teacher_posterior_true_hyp)
+            self_teaching_posterior_sample[self.observed_features] = 0
 
         # select max
-        teacher_data = self.features[np.random.choice(
-            np.where(teacher_posterior_true_hyp == np.amax(teacher_posterior_true_hyp))[0])]
+        self_teaching_data = self.features[np.random.choice(
+            np.where(self_teaching_posterior_sample ==
+                     np.amax(self_teaching_posterior_sample))[0])]
 
-        # select data point, and normalize if possible
-        # if np.all(np.sum(teacher_posterior_true_hyp)) != 0:
-        # teacher_data = np.random.choice(np.arange(self.n_features),
-        #                                 p=teacher_posterior_true_hyp /
-        #                                 np.nansum(teacher_posterior_true_hyp))
-        # teacher_data = np.nan_to_num(teacher_data)
-
-        return teacher_data
-
-    # def cooperative_inference(self, n_iters):
-    #     """Run selection and updating equations until convergence"""
-    #     # TODO: run until convergence
-    #     for i in range(n_iters):
-    #         self.update_learner_posterior()
-    #         self.update_teacher_posterior()
+        return self_teaching_data
 
     def run(self):
-        """Run teacher until correct hypothesis is determined"""
-
-        # sample a random true hypothesis
-        # self.true_hyp_idx = np.random.randint(len(self.hyp_space))
-        # self.true_hyp = self.hyp_space[self.true_hyp_idx]
+        """Run self-teaching until a correct hypothesis is determined"""
 
         hypothesis_found = False
-        # true_hyp_found_idx = -1
 
         while hypothesis_found != True:
-            # run updates for learner posterior and teacher likelihood until convergence
+            # run updates for learning and teacher posterior
             self.update_learner_posterior()
-            self.update_teacher_posterior()
+            self.update_self_teaching_posterior()
 
-            # sample data point from teacher
-            teaching_sample_feature = self.sample_teacher_posterior()
-            # print("sampled feature:", teaching_sample_feature)
-            teaching_sample_label = self.true_hyp[teaching_sample_feature]
+            # sample data point from self-teaching
+            self_teaching_sample_feature = self.sample_self_teaching_posterior()
+            self_teaching_sample_label = self.true_hyp[self_teaching_sample_feature]
             self.observed_features = np.append(
-                self.observed_features, teaching_sample_feature)
+                self.observed_features, self_teaching_sample_feature)
             self.observed_labels = np.append(
-                self.observed_labels, teaching_sample_label)
+                self.observed_labels, self_teaching_sample_label)
 
             # get learner posterior and broadcast
-            updated_learner_posterior = self.learner_posterior[:, teaching_sample_feature,
-                                                               teaching_sample_label]
+            updated_learner_posterior = self.learner_posterior[:, self_teaching_sample_feature,
+                                                               self_teaching_sample_label]
 
             # update new learner posterior
-            # print(updated_learner_posterior)
             self.learner_posterior = np.repeat(updated_learner_posterior, self.n_labels *
                                                self.n_features).reshape(self.n_hyp,
                                                                         self.n_features,
