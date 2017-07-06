@@ -7,14 +7,14 @@ class ActiveLearner:
         assert(n_features > 0)
 
         self.d = []  # observed data points
-        self.num_obs = 0  # number of observed data points
+        self.n_obs = 0  # number of observed data points
         self.m = 2  # number of possible y values
         self.n_features = n_features
         # self.hyp_space = self.create_hyp_space(self.n_features)
         self.hyp_space = self.create_boundary_hyp_space()
-        self.num_hyp = len(self.hyp_space)
-        self.prior = np.array([1 / self.num_hyp
-                               for _ in range(self.num_hyp)])
+        self.n_hyp = len(self.hyp_space)
+        self.prior = np.array([1 / self.n_hyp
+                               for _ in range(self.n_hyp)])
         self.posterior = self.prior
         self.true_hyp_idx = np.random.randint(len(self.hyp_space))
         self.true_hyp = self.hyp_space[self.true_hyp_idx]
@@ -123,6 +123,7 @@ class ActiveLearner:
             for i, query in enumerate(queries):
                 eig[i] = self.expected_information_gain(query)
 
+            # TODO: consider sampling proportional to information gain
             # select query with maximum expected information gain
             query = queries[np.random.choice(np.where(eig == np.amax(eig))[0])]
 
@@ -135,23 +136,9 @@ class ActiveLearner:
             queries = np.delete(queries, query_idx)
 
             # increment number of observations
-            self.num_obs += 1
+            self.n_obs += 1
 
             # save current posterior of true hypothesis
-            self.posterior_true_hyp[self.num_obs] = self.posterior[self.true_hyp_idx]
+            self.posterior_true_hyp[self.n_obs] = self.posterior[self.true_hyp_idx]
 
-        # TODO: return actual posterior to check with true hyp
-        return self.num_obs, self.posterior_true_hyp
-
-
-if __name__ == "__main__":
-    n_features = 8
-    n_iters = 100
-    num_obs_arr = np.array([])
-
-    for i in range(n_iters):
-        active_learner = ActiveLearner(n_features)
-        num_obs = active_learner.run()
-        num_obs_arr = np.append(num_obs_arr, num_obs)
-
-    print(np.bincount(num_obs_arr.astype(int)) / n_iters)
+        return self.n_obs, self.posterior_true_hyp

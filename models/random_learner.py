@@ -4,24 +4,24 @@ import numpy as np
 class RandomLearner():
     def __init__(self, n_features):
         self.n_features = n_features
-        self.num_labels = 2
+        self.n_labels = 2
         self.observed_features = np.array([])
         self.observed_labels = np.array([])
-        self.num_obs = 0
+        self.n_obs = 0
         self.features = np.arange(self.n_features)
-        self.labels = np.arange(self.num_labels)
+        self.labels = np.arange(self.n_labels)
         # self.hyp_space = self.create_hyp_space(self.n_features)
         self.hyp_space = self.create_boundary_hyp_space()
-        self.num_hyp = len(self.hyp_space)
-        self.prior = np.array([[[1 / self.num_hyp
-                                 for _ in range(self.num_labels)]
+        self.n_hyp = len(self.hyp_space)
+        self.prior = np.array([[[1 / self.n_hyp
+                                 for _ in range(self.n_labels)]
                                 for _ in range(self.n_features)]
-                               for _ in range(self.num_hyp)])
+                               for _ in range(self.n_hyp)])
         self.posterior = self.prior
         self.true_hyp_idx = np.random.randint(len(self.hyp_space))
         self.true_hyp = self.hyp_space[self.true_hyp_idx]
         self.posterior_true_hyp = np.ones(self.n_features + 1)
-        self.posterior_true_hyp[0] = 1 / self.num_hyp
+        self.posterior_true_hyp[0] = 1 / self.n_hyp
 
     def create_hyp_space(self, n_features):
         hyp_space = []
@@ -44,7 +44,7 @@ class RandomLearner():
         return hyp_space
 
     def likelihood(self):
-        lik = np.ones((self.num_hyp, self.n_features, self.num_labels))
+        lik = np.ones((self.n_hyp, self.n_features, self.n_labels))
 
         for i, hyp in enumerate(self.hyp_space):
             for j, feature in enumerate(self.features):
@@ -85,16 +85,16 @@ class RandomLearner():
                                                        query_feature, int(query_label)]
             # print(updated_learner_posterior)
             self.posterior = np.repeat(updated_learner_posterior,
-                                       self.num_labels * self.n_features).reshape(
-                                           self.num_hyp,
+                                       self.n_labels * self.n_features).reshape(
+                                           self.n_hyp,
                                            self.n_features,
-                                           self.num_labels)
+                                           self.n_labels)
 
             # increment number of observations
-            self.num_obs += 1
+            self.n_obs += 1
 
             # save current posterior of true hypothesis
-            self.posterior_true_hyp[self.num_obs] = updated_learner_posterior[self.true_hyp_idx]
+            self.posterior_true_hyp[self.n_obs] = updated_learner_posterior[self.true_hyp_idx]
 
             # remove query from set of queries
             query_idx = np.argwhere(queries == query_feature)
@@ -105,17 +105,4 @@ class RandomLearner():
                 hypothesis_found = True
                 true_hyp_found_idx = np.where(updated_learner_posterior == 1)
 
-        return self.num_obs, self.posterior_true_hyp
-
-
-if __name__ == "__main__":
-    n_features = 8
-    n_iters = 1000
-    num_obs_arr = np.array([])
-
-    for i in range(n_iters):
-        random_learner = RandomLearner(n_features)
-        true_hyp, num_obs = random_learner.run()
-        num_obs_arr = np.append(num_obs_arr, num_obs)
-
-    print(np.bincount(num_obs_arr.astype(int)) / n_iters)
+        return self.n_obs, self.posterior_true_hyp
