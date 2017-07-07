@@ -87,13 +87,13 @@ class SelfTeacher:
         lik = self.likelihood()  # p(y|x, h)
         self_teaching_posterior = self.get_self_teaching_posterior()
 
-        # calculate posterior and normalize
+        # calculate posterior
         self.learner_posterior = lik * self_teaching_posterior * \
             self.learner_posterior  # use existing posterior as prior
 
-        self.learner_posterior = self.learner_posterior / \
-            np.nansum(self.learner_posterior, axis=0)
-        self.learner_posterior = np.nan_to_num(self.learner_posterior)
+        # normalize across each hypothesis
+        self.learner_posterior = np.nan_to_num(self.learner_posterior /
+                                               np.sum(self.learner_posterior, axis=0))
 
     def update_self_teaching_posterior(self):
         """Calculates the posterior of self teaching for determining which points
@@ -120,7 +120,14 @@ class SelfTeacher:
 
         # divide by prior over hypotheses to get conditional prob
         # p(x|h) = p(h, x)/p(h)
-        prob_conditional_features = prob_joint_hyp_features / self.learner_prior
+        # prob_conditional_features = prob_joint_hyp_features / self.learner_prior
+
+        # marginalize over x, i.e. p(h) = \sum_x p(h, x)
+        prob_conditional_features = prob_joint_hyp_features / \
+            np.repeat(np.sum(prob_joint_hyp_features, axis=1),
+                      self.n_features).reshape(
+                          self.n_hyp, self.n_features, self.n_labels)
+        prob_conditional_features = np.nan_to_num(prob_conditional_features)
 
         # calculate equation for self-teaching
         # p(x) = \sum_h p(x|h) * p(h)
@@ -148,6 +155,9 @@ class SelfTeacher:
         self_teaching_posterior = self.get_self_teaching_posterior()
         self_teaching_posterior_sample = self_teaching_posterior[0, :, 0]
 
+        # check posterior sample is a valid probability distribution
+        assert np.isclose(np.sum(self_teaching_posterior_sample), 1.0)
+
         # set probability of selecting observed features to be zero
         self.observed_features = self.observed_features.astype(int)
         if self.observed_features.size != 0:
@@ -157,6 +167,15 @@ class SelfTeacher:
         self_teaching_data = self.features[np.random.choice(
             np.where(self_teaching_posterior_sample ==
                      np.amax(self_teaching_posterior_sample))[0])]
+
+        # select proportionally
+        # if np.all(np.sum(self_teaching_posterior_sample)) != 0:
+        #     self_teaching_data = np.random.choice(np.arange(self.n_features),
+        #                                           p=self_teaching_posterior_sample /
+        #                                           np.nansum(self_teaching_posterior_sample))
+        #     self_teaching_data = np.nan_to_num(self_teaching_data)
+        # else:
+        #     print("Error!")
 
         return self_teaching_data
 
@@ -172,6 +191,7 @@ class SelfTeacher:
 
             # sample data point from self-teaching
             self_teaching_sample_feature = self.sample_self_teaching_posterior()
+            # print(self_teaching_sample_feature)
             self_teaching_sample_label = self.true_hyp[self_teaching_sample_feature]
             self.observed_features = np.append(
                 self.observed_features, self_teaching_sample_feature)
@@ -182,14 +202,17 @@ class SelfTeacher:
             updated_learner_posterior = self.learner_posterior[:, self_teaching_sample_feature,
                                                                self_teaching_sample_label]
 
-            # update new learner posterior
+            # check for valid probability distribution
+            assert np.isclose(np.sum(updated_learner_posterior), 1.0)
+
+            # update new learner posterior by broadcasting
             self.learner_posterior = np.repeat(updated_learner_posterior, self.n_labels *
                                                self.n_features).reshape(self.n_hyp,
                                                                         self.n_features,
                                                                         self.n_labels)
 
             # check if any hypothesis has probability one
-            if np.any(updated_learner_posterior == 1):
+            if np.any(updated_learner_posterior == 1.0):
                 hypothesis_found = True
                 true_hyp_found_idx = np.where(updated_learner_posterior == 1)
 

@@ -115,8 +115,11 @@ class Teacher:
                 self.n_hyp, self.n_features, self.n_labels)
 
         # divide by prior over hypotheses to get conditional prob
-        # p(x|h) = p(h, x)/p(h)
-        prob_conditional_features = prob_joint_hyp_features / self.learner_prior
+        # p(x|h) = p(h, x)/ \sum_x p(h, x)
+        # prob_conditional_features = prob_joint_hyp_features / self.learner_prior
+        prob_conditional_features = prob_joint_hyp_features / \
+            np.repeat(np.sum(prob_joint_hyp_features, axis=1), self.n_features).reshape(
+                self.n_hyp, self.n_features, self.n_labels)
 
         self.teacher_posterior = prob_conditional_features
 
@@ -139,10 +142,10 @@ class Teacher:
 
         # select data point, and normalize if possible
         # if np.all(np.sum(teacher_posterior_true_hyp)) != 0:
-        # teacher_data = np.random.choice(np.arange(self.n_features),
-        #                                 p=teacher_posterior_true_hyp /
-        #                                 np.nansum(teacher_posterior_true_hyp))
-        # teacher_data = np.nan_to_num(teacher_data)
+        #     teacher_data = np.random.choice(np.arange(self.n_features),
+        #                                     p=teacher_posterior_true_hyp /
+        #                                     np.nansum(teacher_posterior_true_hyp))
+        #     teacher_data = np.nan_to_num(teacher_data)
 
         return teacher_data
 
