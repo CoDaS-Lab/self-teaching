@@ -43,10 +43,19 @@ if __name__ == "__main__":
 
     features = np.arange(n_features + 1)
 
-    plt.plot(features, active_post_mean, '-og')
-    plt.plot(features, random_post_mean, '-or')
-    plt.plot(features, teacher_post_mean, '-ob')
-    plt.plot(features, self_teacher_post_mean, '-ok')
+    # for i in range(n_iters):
+    #     plt.plot(features, self_teacher_post[i, :], '-ro', alpha=0.01)
+
+    # plt.plot(features, self_teacher_post_mean, '-bo')
+    # plt.show()
+
+    plt.plot(features, active_post_mean, '-og', label='Active Learner')
+    plt.plot(features, random_post_mean, '-or', label='Random Learner')
+    plt.plot(features, teacher_post_mean, '-ob', label='Teaching')
+    plt.plot(features, self_teacher_post_mean, '-ok', label='Self-teaching')
+    plt.xlabel("Number of features observed")
+    plt.ylabel("Posterior probability of the true hypothesis")
+    plt.legend()
     plt.show()
 
     # active_learner_counts = np.bincount(active_obs.astype(int)) / n_iters
