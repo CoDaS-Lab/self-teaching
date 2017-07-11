@@ -78,7 +78,7 @@ class Teacher:
         self.teacher_posterior = teacher_posterior
 
     def update_learner_posterior(self):
-        """Calculates the unnormalized posterior across all 
+        """Calculates the unnormalized posterior across all
         possible feature/label observations"""
 
         lik = self.likelihood()  # p(y|x, h)
@@ -93,7 +93,7 @@ class Teacher:
         self.learner_posterior = np.nan_to_num(self.learner_posterior)
 
     def update_teacher_posterior(self):
-        """Calculates the posterior of selecting data points by transforming the 
+        """Calculates the posterior of selecting data points by transforming the
         posterior p(y|x, h) to p(x|h)"""
 
         # uniform joint over data, which is broadcasted into correct shape
@@ -116,7 +116,9 @@ class Teacher:
 
         # divide by prior over hypotheses to get conditional prob
         # p(x|h) = p(h, x)/ \sum_x p(h, x)
-        # prob_conditional_features = prob_joint_hyp_features / self.learner_prior
+        prob_conditional_features_old = prob_joint_hyp_features / self.learner_prior
+
+        # marginalize over x, i.e. p(h) = \sum_x p(h, x)
         prob_conditional_features = prob_joint_hyp_features / \
             np.repeat(np.sum(prob_joint_hyp_features, axis=1), self.n_features).reshape(
                 self.n_hyp, self.n_features, self.n_labels)
@@ -168,8 +170,10 @@ class Teacher:
 
         while hypothesis_found != True:
             # run updates for learner posterior and teacher likelihood until convergence
-            self.update_learner_posterior()
-            self.update_teacher_posterior()
+            ci_iters = 15
+            for i in range(ci_iters):
+                self.update_learner_posterior()
+                self.update_teacher_posterior()
 
             # sample data point from teacher
             teaching_sample_feature = self.sample_teacher_posterior()
@@ -183,6 +187,8 @@ class Teacher:
             # get learner posterior and broadcast
             updated_learner_posterior = self.learner_posterior[:, teaching_sample_feature,
                                                                teaching_sample_label]
+
+            # print(updated_learner_posterior)
 
             # update new learner posterior
             # print(updated_learner_posterior)
