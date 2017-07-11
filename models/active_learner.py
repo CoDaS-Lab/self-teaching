@@ -45,6 +45,13 @@ class ActiveLearner:
         hyp_space = np.array(hyp_space)
         return hyp_space
 
+    def get_true_hypothesis(self):
+        return self.true_hyp
+
+    def set_true_hypothesis(self, true_hyp):
+        self.true_hyp = true_hyp
+        self.true_hyp_idx = np.where(self.true_hyp in self.hyp_space)[0]
+
     def likelihood(self, x, y):
         """Calculates the likelihood of observing the datapoint x"""
 
@@ -110,7 +117,8 @@ class ActiveLearner:
 
         return np.dot(eig_vec, eig_weights)
 
-    def run(self):
+    # TODO: change n_steps to something more reasonable
+    def run(self, n_steps=100):
         """Runs the active learner until the true hypothesis is discovered"""
 
         # assert self.true_hyp in self.hyp_space
@@ -118,14 +126,17 @@ class ActiveLearner:
         queries = np.arange(self.n_features)
 
         # while np.nonzero(self.posterior)[0].shape[0] > 1:
-        while np.count_nonzero(self.posterior) > 1:
+        while np.count_nonzero(self.posterior) > 1 and n_steps >= 0:
             eig = np.zeros_like(queries, dtype=np.float)
             for i, query in enumerate(queries):
                 eig[i] = self.expected_information_gain(query)
 
-            # TODO: consider sampling proportional to information gain
             # select query with maximum expected information gain
-            query = queries[np.random.choice(np.where(eig == np.amax(eig))[0])]
+            # query = queries[np.random.choice(np.where(eig == np.amax(eig))[0])]
+
+            # sample proportionally
+            # print(np.sum(np.abs(eig / np.nansum(eig))))
+            query = np.random.choice(queries, p=np.abs(eig / np.sum(eig)))
 
             # update model
             query_y = self.true_hyp[query]
@@ -135,8 +146,9 @@ class ActiveLearner:
             query_idx = np.argwhere(queries == query)
             queries = np.delete(queries, query_idx)
 
-            # increment number of observations
+            # increment number of observations and decrease number of steps
             self.n_obs += 1
+            n_steps -= 1
 
             # save current posterior of true hypothesis
             self.posterior_true_hyp[self.n_obs] = self.posterior[self.true_hyp_idx]
