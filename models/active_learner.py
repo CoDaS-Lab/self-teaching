@@ -118,8 +118,12 @@ class ActiveLearner:
         return np.dot(eig_vec, eig_weights)
 
     # TODO: change n_steps to something more reasonable
-    def run(self, n_steps=100):
+    def run(self, n_steps=None):
         """Runs the active learner until the true hypothesis is discovered"""
+
+        # set n steps to be the number of features if not None
+        if n_steps is None:
+            n_steps = self.n_features
 
         # assert self.true_hyp in self.hyp_space
 
