@@ -130,17 +130,24 @@ class ActiveLearner:
         queries = np.arange(self.n_features)
 
         # while np.nonzero(self.posterior)[0].shape[0] > 1:
-        while np.count_nonzero(self.posterior) > 1 and n_steps >= 0:
+        while np.count_nonzero(self.posterior) > 1 and n_steps > 0:
             eig = np.zeros_like(queries, dtype=np.float)
             for i, query in enumerate(queries):
                 eig[i] = self.expected_information_gain(query)
 
+            # TODO: fix/clean up later
             # select query with maximum expected information gain
-            # query = queries[np.random.choice(np.where(eig == np.amax(eig))[0])]
-
-            # sample proportionally
-            # print(np.sum(np.abs(eig / np.nansum(eig))))
-            query = np.random.choice(queries, p=np.abs(eig / np.sum(eig)))
+            if n_steps is not None:
+                print("using max")
+                query = queries[np.random.choice(
+                    np.where(eig == np.amax(eig))[0])]
+                print(np.where(eig == np.amax(eig)))
+                print(query)
+            else:
+                # sample proportionally
+                # print(np.sum(np.abs(eig / np.nansum(eig))))
+                print("using proportional")
+                query = np.random.choice(queries, p=np.abs(eig / np.sum(eig)))
 
             # update model
             query_y = self.true_hyp[query]
