@@ -95,6 +95,7 @@ class TeacherRollout:
         teaching_posterior = self.get_teaching_posterior()
 
         # calculate posterior
+        # p(h|x, y) = p(y|x, h) * p(x|h) * p(h)
         self.learner_posterior = lik * teaching_posterior * \
             self.learner_posterior  # use existing posterior as prior
 
@@ -116,6 +117,8 @@ class TeacherRollout:
         transition_prob = np.zeros((self.n_hyp, self.n_hyp))
         for i in range(len(active_learners)):
             transition_prob[i, :] = active_learners[i].posterior
+        # print(transition_prob)
+        self.transition_prob_matrix = transition_prob
 
         # calculate p(x|h*) = p(x|h') * p(h'|h*) and marginalize across all hypotheses
         transition_prob = np.broadcast_to(transition_prob, (self.n_labels,
@@ -158,16 +161,21 @@ class TeacherRollout:
         """Calculates the posterior for self-teaching with rollout"""
 
         prob_conditional_features = self.conditional_feature_prob()
+        # print(prob_conditional_features.shape)
+        # print(self.transition_prob.shape)
 
         # calculate teaching posterior differently depending on number of observations
         if self.n_obs < self.n_steps:
             # print("using roll out")
+            # sum_h p(x|h') * p(h'|h*)
             self.teaching_posterior = np.sum(
                 prob_conditional_features * self.transition_prob, axis=0)
+            # print("rollout", self.teaching_posterior.shape)
         else:
             # print("using self teaching")
-            self.teacher_posterior = np.sum(
+            self.teaching_posterior = np.sum(
                 prob_conditional_features * self.learner_posterior, axis=0)
+            # print("self teaching", self.teaching_posterior.shape)
 
     def sample_teaching_posterior(self):
         """Sample a data point based off the self-teaching posterior"""
@@ -176,10 +184,15 @@ class TeacherRollout:
         teaching_posterior = self.get_teaching_posterior()
         if self.n_obs < self.n_steps:
             # while using rollout, select posterior of actual hypothesis
-            teaching_posterior = teaching_posterior[self.true_hyp_idx]
-            # TODO: replace above with below, with correct matrix shapes
-            # teaching_posterior = np.sum(
-            #     teaching_posterior * self.transition_prob, axis=0)
+            # teaching_posterior = teaching_posterior[self.true_hyp_idx]
+
+            # get teacher prior
+            teacher_prior = self.transition_prob_matrix[self.true_hyp_idx, :]
+
+            # calculate teaching posterior
+            teaching_posterior = (self.teaching_posterior.T * teacher_prior).T
+
+            teaching_posterior = np.sum(teaching_posterior, axis=0)
         else:
             # when using self teaching, average across all hypotheses instead
             teaching_posterior = np.sum(
@@ -231,6 +244,7 @@ class TeacherRollout:
             updated_learner_posterior = self.learner_posterior[:, teaching_sample_feature,
                                                                teaching_sample_label]
 
+            print(updated_learner_posterior)
             # check for valid probability distribution
             assert np.isclose(np.sum(updated_learner_posterior), 1.0)
 

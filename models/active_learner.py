@@ -138,15 +138,11 @@ class ActiveLearner:
             # TODO: fix/clean up later
             # select query with maximum expected information gain
             if n_steps is not None:
-                print("using max")
                 query = queries[np.random.choice(
                     np.where(eig == np.amax(eig))[0])]
-                print(np.where(eig == np.amax(eig)))
-                print(query)
             else:
                 # sample proportionally
                 # print(np.sum(np.abs(eig / np.nansum(eig))))
-                print("using proportional")
                 query = np.random.choice(queries, p=np.abs(eig / np.sum(eig)))
 
             # update model
