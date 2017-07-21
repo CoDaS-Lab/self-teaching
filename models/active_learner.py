@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 
 
 class ActiveLearner:
-    def __init__(self, n_features):
+    def __init__(self, n_features, hyp_space_type):
         assert(n_features > 0)
 
         self.d = []  # observed data points
@@ -11,7 +11,10 @@ class ActiveLearner:
         self.m = 2  # number of possible y values
         self.n_features = n_features
         # self.hyp_space = self.create_hyp_space(self.n_features)
-        self.hyp_space = self.create_boundary_hyp_space()
+        if hyp_space_type == "boundary":
+            self.hyp_space = self.create_boundary_hyp_space()
+        elif hyp_space_type == "line":
+            self.hyp_space = self.create_line_hyp_space()
         self.n_hyp = len(self.hyp_space)
         self.prior = np.array([1 / self.n_hyp
                                for _ in range(self.n_hyp)])
@@ -21,15 +24,15 @@ class ActiveLearner:
         self.posterior_true_hyp = np.ones(self.n_features + 1)
         self.posterior_true_hyp[0] = self.posterior[self.true_hyp_idx]
 
-    def create_hyp_space(self, n_features):
+    def create_line_hyp_space(self):
         """Creates a hypothesis space of specified size"""
 
-        assert n_features > 0
+        assert self.n_features > 0
 
         hyp_space = []
-        for i in range(1, n_features + 1):
-            for j in range(n_features - i + 1):
-                hyp = [0 for _ in range(n_features)]
+        for i in range(1, self.n_features + 1):
+            for j in range(self.n_features - i + 1):
+                hyp = [0 for _ in range(self.n_features)]
                 hyp[j:j + i] = [1 for _ in range(i)]
                 hyp_space.append(hyp)
         hyp_space = np.array(hyp_space)

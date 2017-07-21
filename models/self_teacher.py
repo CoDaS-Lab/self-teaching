@@ -2,7 +2,7 @@ import numpy as np
 
 
 class SelfTeacher:
-    def __init__(self, n_features):
+    def __init__(self, n_features, hyp_space_type):
         self.n_features = n_features
         self.n_labels = 2
         self.observed_features = np.array([])
@@ -10,7 +10,10 @@ class SelfTeacher:
         self.n_obs = 0
         self.features = np.arange(self.n_features)
         self.labels = np.arange(self.n_labels)
-        self.hyp_space = self.create_boundary_hyp_space()
+        if hyp_space_type == "boundary":
+            self.hyp_space = self.create_boundary_hyp_space()
+        elif hyp_space_type == "line":
+            self.hyp_space = self.create_line_hyp_space()
         self.n_hyp = len(self.hyp_space)
         self.learner_prior = np.array([[[1 / self.n_hyp
                                          for _ in range(self.n_labels)]
@@ -30,7 +33,7 @@ class SelfTeacher:
         self.posterior_true_hyp = np.ones(self.n_features + 1)
         self.posterior_true_hyp[0] = 1 / self.n_hyp
 
-    def create_hyp_space(self):
+    def create_line_hyp_space(self):
         """Creates a hypothesis space of line concepts"""
         hyp_space = []
         for i in range(1, self.n_features + 1):
@@ -79,7 +82,7 @@ class SelfTeacher:
         self.self_teaching_posterior = self_teaching_posterior
 
     def update_learner_posterior(self):
-        """Calculates the unnormalized posterior across all 
+        """Calculates the unnormalized posterior across all
         possible feature/label observations"""
 
         lik = self.likelihood()  # p(y|x, h)
@@ -212,7 +215,9 @@ class SelfTeacher:
                                                                         self.n_labels)
 
             # check if any hypothesis has probability one
-            if np.any(updated_learner_posterior == 1.0):
+            if np.any(updated_learner_posterior == 1.0) and \
+               self.true_hyp_idx == \
+               np.asscalar((np.where(updated_learner_posterior == 1.0))[0]):
                 hypothesis_found = True
                 true_hyp_found_idx = np.where(updated_learner_posterior == 1)
 
