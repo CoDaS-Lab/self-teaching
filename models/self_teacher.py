@@ -2,7 +2,7 @@ import numpy as np
 
 
 class SelfTeacher:
-    def __init__(self, n_features, hyp_space_type):
+    def __init__(self, n_features, hyp_space_type, true_hyp=None):
         self.n_features = n_features
         self.n_labels = 2
         self.observed_features = np.array([])
@@ -28,10 +28,19 @@ class SelfTeacher:
                                                   for _ in range(self.n_features)]
                                                  for _ in range(self.n_hyp)])
         self.learner_posterior = self.learner_prior
-        self.true_hyp_idx = np.random.randint(len(self.hyp_space))
-        self.true_hyp = self.hyp_space[self.true_hyp_idx]
+
+        if true_hyp is not None:
+            self.true_hyp = true_hyp
+            self.true_hyp_idx = \
+                np.where([np.all(true_hyp == hyp)
+                          for hyp in self.hyp_space])[0]
+        else:
+            self.true_hyp_idx = np.random.randint(len(self.hyp_space))
+            self.true_hyp = self.hyp_space[self.true_hyp_idx]
+
         self.posterior_true_hyp = np.ones(self.n_features + 1)
         self.posterior_true_hyp[0] = 1 / self.n_hyp
+        self.first_feature_prob = np.zeros(self.n_features)
 
     def create_line_hyp_space(self):
         """Creates a hypothesis space of line concepts"""
@@ -169,12 +178,25 @@ class SelfTeacher:
         #     np.where(self_teaching_posterior_sample ==
         #              np.amax(self_teaching_posterior_sample))[0])]
 
+        if self.n_obs == 0:
+            self.first_feature_prob = self_teaching_posterior_sample
+
         # select proportionally
         if np.all(np.sum(self_teaching_posterior_sample)) != 0:
+            # print("obs", self.n_obs)
+
+            self_teaching_prob = self_teaching_posterior_sample / \
+                np.nansum(self_teaching_posterior_sample)
+
             self_teaching_data = np.random.choice(np.arange(self.n_features),
-                                                  p=self_teaching_posterior_sample /
-                                                  np.nansum(self_teaching_posterior_sample))
-            self_teaching_data = np.nan_to_num(self_teaching_data)
+                                                  p=self_teaching_prob)
+
+            # print("self teaching posterior", self_teaching_prob)
+            # print(np.isclose(self_teaching_prob[0], self_teaching_prob[3]))
+            # print(np.where(np.isclose(self_teaching_prob, np.amax(self_teaching_prob))))
+            # self_teaching_data = np.random.choice(
+            #     np.where(np.isclose(self_teaching_prob, np.amax(self_teaching_prob)))[0])
+            # print("sampled teaching feature", self_teaching_data)
         else:
             print("Error!")
 
@@ -185,9 +207,11 @@ class SelfTeacher:
 
         hypothesis_found = False
 
+        print("true hyp", self.true_hyp)
+
         while hypothesis_found != True:
             # run updates for learning and teacher posterior
-            ci_iters = 50
+            ci_iters = 15
             for i in range(ci_iters):
                 self.update_learner_posterior()
                 self.update_self_teaching_posterior()
@@ -227,4 +251,4 @@ class SelfTeacher:
             # save posterior probability of true hypothesis
             self.posterior_true_hyp[self.n_obs] = updated_learner_posterior[self.true_hyp_idx]
 
-        return self.n_obs, self.posterior_true_hyp
+        return self.n_obs, self.posterior_true_hyp, self.first_feature_prob

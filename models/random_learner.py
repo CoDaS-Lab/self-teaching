@@ -2,7 +2,7 @@ import numpy as np
 
 
 class RandomLearner():
-    def __init__(self, n_features, hyp_space_type):
+    def __init__(self, n_features, hyp_space_type, true_hyp=None):
         self.n_features = n_features
         self.n_labels = 2
         self.observed_features = np.array([])
@@ -20,10 +20,19 @@ class RandomLearner():
                                 for _ in range(self.n_features)]
                                for _ in range(self.n_hyp)])
         self.posterior = self.prior
-        self.true_hyp_idx = np.random.randint(len(self.hyp_space))
-        self.true_hyp = self.hyp_space[self.true_hyp_idx]
+
+        if true_hyp is not None:
+            self.true_hyp = true_hyp
+            self.true_hyp_idx = \
+                np.where([np.all(true_hyp == hyp)
+                          for hyp in self.hyp_space])[0]
+        else:
+            self.true_hyp_idx = np.random.randint(len(self.hyp_space))
+            self.true_hyp = self.hyp_space[self.true_hyp_idx]
+
         self.posterior_true_hyp = np.ones(self.n_features + 1)
         self.posterior_true_hyp[0] = 1 / self.n_hyp
+        self.first_feature_prob = np.zeros(self.n_features)
 
     def create_line_hyp_space(self):
         hyp_space = []
@@ -71,6 +80,10 @@ class RandomLearner():
         queries = np.arange(self.n_features)
 
         while hypothesis_found != True:
+            if self.n_obs == 0:
+                self.first_feature_prob = [
+                    1 / len(queries) for _ in range(len(queries))]
+
             # select a query at random
             query_feature = np.random.choice(queries)
             query_label = self.true_hyp[query_feature]
@@ -107,4 +120,4 @@ class RandomLearner():
                 hypothesis_found = True
                 true_hyp_found_idx = np.where(updated_learner_posterior == 1)
 
-        return self.n_obs, self.posterior_true_hyp
+        return self.n_obs, self.posterior_true_hyp, self.first_feature_prob

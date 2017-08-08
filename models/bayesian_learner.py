@@ -2,7 +2,7 @@ import numpy as np
 
 
 class BayesianLearner:
-    def __init__(self, n_features, hyp_space_type):
+    def __init__(self, n_features, hyp_space_type, true_hyp=None):
         self.n_features = n_features
         self.n_labels = 2
         self.observed_features = np.array([])
@@ -10,6 +10,7 @@ class BayesianLearner:
         self.n_obs = 0
         self.features = np.arange(self.n_features)
         self.labels = np.arange(self.n_labels)
+        self.hyp_space_type = hyp_space_type
         if hyp_space_type == "boundary":
             self.hyp_space = self.create_boundary_hyp_space()
         elif hyp_space_type == "line":
@@ -20,11 +21,20 @@ class BayesianLearner:
                                         for _ in range(self.n_features)]
                                        for _ in range(self.n_hyp)])
         self.learner_posterior = self.learner_prior
-        self.true_hyp_idx = np.random.randint(len(self.hyp_space))
-        self.true_hyp = self.hyp_space[self.true_hyp_idx]
+
+        if true_hyp is not None:
+            self.true_hyp = true_hyp
+            self.true_hyp_idx = \
+                np.where([np.all(true_hyp == hyp)
+                          for hyp in self.hyp_space])[0]
+        else:
+            self.true_hyp_idx = np.random.randint(len(self.hyp_space))
+            self.true_hyp = self.hyp_space[self.true_hyp_idx]
+
         self.posterior_true_hyp = np.zeros(self.n_features + 1)
         self.posterior_true_hyp[0] = 1 / self.n_hyp
         self.queries = np.arange(self.n_features)
+        self.first_feature_prob = np.zeros(self.n_features)
 
     def create_line_hyp_space(self):
         """Creates a hypothesis space of concepts"""
@@ -84,21 +94,25 @@ class BayesianLearner:
         while hypothesis_found != True:
             self.update_learner_posterior()
 
+            if self.n_obs == 0:
+                self.first_feature_prob = [
+                    1 / len(self.queries) for _ in range(len(self.queries))]
+
             # select a query at random
             query_feature = np.random.choice(self.queries)
             query_label = self.true_hyp[query_feature]
 
-            if query_label == 0:
-                # remove all queries to the left that are do not provide new inform
-                self.queries = np.delete(
-                    self.queries, np.where(self.queries < query_feature))
+            if self.hyp_space_type == "boundary":
+                if query_label == 0:
+                    # remove all queries to the left that are do not provide new information
+                    self.queries = np.delete(
+                        self.queries, np.where(self.queries < query_feature))
+                elif query_label == 1:
+                    # remove all queries to the right for the same reason
+                    self.queries = np.delete(
+                        self.queries, np.where(self.queries > query_feature))
 
-            elif query_label == 1:
-                # remove all queries to the right for the same reason
-                self.queries = np.delete(
-                    self.queries, np.where(self.queries > query_feature))
-
-                # update posterior
+                    # update posterior
             updated_posterior = self.learner_posterior[:,
                                                        query_feature,
                                                        query_label]
@@ -128,4 +142,4 @@ class BayesianLearner:
             # save posterior probability of true hypothesis
             self.posterior_true_hyp[self.n_obs] = updated_posterior[self.true_hyp_idx]
 
-        return self.n_obs, self.posterior_true_hyp
+        return self.n_obs, self.posterior_true_hyp, self.first_feature_prob

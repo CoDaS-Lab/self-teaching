@@ -3,26 +3,37 @@ import matplotlib.pyplot as plt
 
 
 class ActiveLearner:
-    def __init__(self, n_features, hyp_space_type):
+    def __init__(self, n_features, hyp_space_type, true_hyp=None):
         assert(n_features > 0)
 
         self.d = []  # observed data points
         self.n_obs = 0  # number of observed data points
         self.m = 2  # number of possible y values
         self.n_features = n_features
-        # self.hyp_space = self.create_hyp_space(self.n_features)
+
         if hyp_space_type == "boundary":
             self.hyp_space = self.create_boundary_hyp_space()
         elif hyp_space_type == "line":
             self.hyp_space = self.create_line_hyp_space()
+
         self.n_hyp = len(self.hyp_space)
         self.prior = np.array([1 / self.n_hyp
                                for _ in range(self.n_hyp)])
         self.posterior = self.prior
-        self.true_hyp_idx = np.random.randint(len(self.hyp_space))
-        self.true_hyp = self.hyp_space[self.true_hyp_idx]
+
+        if true_hyp is not None:
+            self.true_hyp = true_hyp
+            self.true_hyp_idx = \
+                np.where([np.all(true_hyp == hyp)
+                          for hyp in self.hyp_space])[0]
+        else:
+            self.true_hyp_idx = np.random.randint(len(self.hyp_space))
+            self.true_hyp = self.hyp_space[self.true_hyp_idx]
+
         self.posterior_true_hyp = np.ones(self.n_features + 1)
-        self.posterior_true_hyp[0] = self.posterior[self.true_hyp_idx]
+        self.posterior_true_hyp[0] = 1 / self.n_hyp
+
+        self.first_feature_prob = np.zeros(n_features)
 
     def create_line_hyp_space(self):
         """Creates a hypothesis space of specified size"""
@@ -138,6 +149,12 @@ class ActiveLearner:
             for i, query in enumerate(queries):
                 eig[i] = self.expected_information_gain(query)
 
+            # print("eig", eig)
+
+            # save prob of selecting features
+            if self.n_obs == 0:
+                self.first_feature_prob = eig / np.sum(eig)
+
             # TODO: fix/clean up later
             # select query with maximum expected information gain
             if n_steps is not None:
@@ -147,6 +164,8 @@ class ActiveLearner:
                 # sample proportionally
                 # print(np.sum(np.abs(eig / np.nansum(eig))))
                 query = np.random.choice(queries, p=np.abs(eig / np.sum(eig)))
+
+            # print("selected feature", query)
 
             # update model
             query_y = self.true_hyp[query]
@@ -163,4 +182,4 @@ class ActiveLearner:
             # save current posterior of true hypothesis
             self.posterior_true_hyp[self.n_obs] = self.posterior[self.true_hyp_idx]
 
-        return self.n_obs, self.posterior_true_hyp
+        return self.n_obs, self.posterior_true_hyp, self.first_feature_prob

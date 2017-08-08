@@ -7,6 +7,7 @@ from models.teacher import Teacher
 from models.self_teacher import SelfTeacher
 from models.teacher_rollout import TeacherRollout
 from models.bayesian_learner import BayesianLearner
+# from models.hypothesis_dependent_learner import HypothesisDependentLearner
 
 if __name__ == "__main__":
     n_features = 8
@@ -17,26 +18,15 @@ if __name__ == "__main__":
     random_obs = np.zeros(n_iters)
     teacher_obs = np.zeros(n_iters)
     self_teacher_obs = np.zeros(n_iters)
-    # bayesian_learner_obs = np.zeros(n_iters)
-    # rollout_none_obs = np.zeros(n_iters)
-    # rollout_one_obs = np.zeros(n_iters)
-    # rollout_two_obs = np.zeros(n_iters)
-    # rollout_three_obs = np.zeros(n_iters)
-    # rollout_four_obs = np.zeros(n_iters)
-    # rollout_full_obs = np.zeros(n_iters)
+    bayesian_learner_obs = np.zeros(n_iters)
+    # hypothesis_dependent_obs = np.zeros(n_iters)
 
     # save posterior probability for each iteration
     active_post = np.zeros((n_iters, n_features + 1))
     random_post = np.zeros((n_iters, n_features + 1))
     teacher_post = np.zeros((n_iters, n_features + 1))
     self_teacher_post = np.zeros((n_iters, n_features + 1))
-    # bayesian_learner_post = np.zeros((n_iters, n_features + 1))
-    # rollout_none_post = np.zeros((n_iters, n_features + 1))
-    # rollout_one_post = np.zeros((n_iters, n_features + 1))
-    # rollout_two_post = np.zeros((n_iters, n_features + 1))
-    # rollout_three_post = np.zeros((n_iters, n_features + 1))
-    # rollout_four_post = np.zeros((n_iters, n_features + 1))
-    # rollout_full_post = np.zeros((n_iters, n_features + 1))
+    bayesian_learner_post = np.zeros((n_iters, n_features + 1))
 
     hyp_space_type = "line"
 
@@ -46,40 +36,39 @@ if __name__ == "__main__":
         random_learner = RandomLearner(n_features, hyp_space_type)
         teacher = Teacher(n_features, hyp_space_type)
         self_teacher = SelfTeacher(n_features, hyp_space_type)
-        # bayesian_learner = BayesianLearner(n_features, hyp_space_type)
-        # rollout_none = TeacherRollout(n_features, 0)
-        # rollout_one = TeacherRollout(n_features, 1)
-        # rollout_two = TeacherRollout(n_features, 2)
-        # rollout_three = TeacherRollout(n_features, 3)
-        # rollout_four = TeacherRollout(n_features, 4)
-        # rollout_full = TeacherRollout(n_features, n_features)
+        bayesian_learner = BayesianLearner(n_features, hyp_space_type)
+        # hypothesis_dependent_learner = HypothesisDependentLearner(
+        #     n_features, hyp_space_type)
 
         # run simulations across all models
-        active_obs[i], active_post[i, :] = active_learner.run()
-        random_obs[i], random_post[i, :] = random_learner.run()
-        teacher_obs[i], teacher_post[i, :] = teacher.run()
-        self_teacher_obs[i], self_teacher_post[i, :] = self_teacher.run()
-        # bayesian_learner_obs[i], bayesian_learner_post[i,
-        #                                                :] = bayesian_learner.run()
-        # rollout_none_obs[i], rollout_none_post[i, :] = rollout_none.run()
-        # rollout_one_obs[i], rollout_one_post[i, :] = rollout_one.run()
-        # rollout_two_obs[i], rollout_two_post[i, :] = rollout_two.run()
-        # rollout_three_obs[i], rollout_three_post[i, :] = rollout_three.run()
-        # rollout_four_obs[i], rollout_four_post[i, :] = rollout_four.run()
-        # rollout_full_obs[i], rollout_full_post[i, :] = rollout_full.run()
+        active_obs[i], active_post[i, :], _ = active_learner.run()
+        random_obs[i], random_post[i, :], _ = random_learner.run()
+        teacher_obs[i], teacher_post[i, :], _ = teacher.run()
+        self_teacher_obs[i], self_teacher_post[i, :], _ = self_teacher.run()
+        bayesian_learner_obs[i], bayesian_learner_post[i,
+                                                       :], _ = bayesian_learner.run()
+        # hypothesis_dependent_obs[i] = hypothesis_dependent_learner.run()
 
     # calculate mean posterior probability of true hypothesis
     active_post_mean = np.mean(active_post, axis=0)
     random_post_mean = np.mean(random_post, axis=0)
     teacher_post_mean = np.mean(teacher_post, axis=0)
     self_teacher_post_mean = np.mean(self_teacher_post, axis=0)
-    # bayesian_learner_post_mean = np.mean(bayesian_learner_post, axis=0)
-    # rollout_none_post_mean = np.mean(rollout_none_post, axis=0)
-    # rollout_one_post_mean = np.mean(rollout_one_post, axis=0)
-    # rollout_two_post_mean = np.mean(rollout_two_post, axis=0)
-    # rollout_three_post_mean = np.mean(rollout_three_post, axis=0)
-    # rollout_four_post_mean = np.mean(rollout_four_post, axis=0)
-    # rollout_full_post_mean = np.mean(rollout_full_post, axis=0)
+    bayesian_learner_post_mean = np.mean(bayesian_learner_post, axis=0)
+
+    # calculate cumulative probability of finding true hypothesis
+    # active_cumulative_obs = [
+    #     np.sum(active_obs <= i) / n_iters for i in range(n_features + 1)]
+    # random_cumulative_obs = [
+    #     np.sum(random_obs <= i) / n_iters for i in range(n_features + 1)]
+    # teacher_cumulative_obs = [
+    #     np.sum(teacher_obs <= i) / n_iters for i in range(n_features + 1)]
+    # self_teacher_cumulative_obs = [
+    #     np.sum(self_teacher_obs <= i) / n_iters for i in range(n_features + 1)]
+    # bayesian_learner_cumulative_obs = [
+    #     np.sum(bayesian_learner_obs <= i) / n_iters for i in range(n_features + 1)]
+    # hypothesis_dependent_cumulative_obs = [
+    #     np.sum(hypothesis_dependent_obs <= i) / n_iters for i in range(n_features + 1)]
 
     features = np.arange(n_features + 1)
 
@@ -93,8 +82,12 @@ if __name__ == "__main__":
     plt.plot(features, active_post_mean, '-o', label='Active Learner')
     plt.plot(features, random_post_mean, '-o', label='Random Learner')
     plt.plot(features, teacher_post_mean, '-o', label='Teaching')
-    plt.plot(features, self_teacher_post_mean, '-o', label='Self-teaching')
-    # plt.plot(features, bayesian_learner_post_mean, '-o', label='Weak sampling')
+    plt.plot(features, self_teacher_post_mean,
+             '-o', label='Self-teaching')
+    plt.plot(features, bayesian_learner_post_mean,
+             '-o', label='Weak sampling')
+    # plt.plot(features, hypothesis_dependent_post_mean,
+    #          '-o', label='Hypothesis Dependent Learner')
     # plt.plot(features, rollout_none_post_mean, '-o', label='Rollout None')
     # plt.plot(features, rollout_full_post_mean, '-o', label='Rollout Full')
     # plt.plot(features, rollout_one_post_mean, '-o', label='Rollout One')
