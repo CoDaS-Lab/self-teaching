@@ -31,13 +31,13 @@ class Teacher:
                 np.where([np.all(true_hyp == hyp)
                           for hyp in self.hyp_space])[0][0]
             self.true_hyp_idx = self.true_hyp_idx.astype(int)
-            print("true hyp", self.true_hyp)
-            print("true hyp idx", self.true_hyp_idx)
+            # print("true hyp", self.true_hyp)
+            # print("true hyp idx", self.true_hyp_idx)
         else:
             self.true_hyp_idx = np.random.randint(len(self.hyp_space))
             self.true_hyp = self.hyp_space[self.true_hyp_idx]
-            print("true hyp", self.true_hyp)
-            print("true hyp idx", self.true_hyp_idx)
+            # print("true hyp", self.true_hyp)
+            # print("true hyp idx", self.true_hyp_idx)
 
         self.learner_posterior = self.learner_prior
         self.posterior_true_hyp = np.ones(self.n_features + 1)
@@ -47,6 +47,8 @@ class Teacher:
     def create_line_hyp_space(self):
         """Creates a hypothesis space of concepts"""
         hyp_space = []
+        blank_hyp = [0 for _ in range(self.n_features)]
+        hyp_space.append(blank_hyp)
         for i in range(1, self.n_features + 1):
             for j in range(self.n_features - i + 1):
                 hyp = [0 for _ in range(self.n_features)]

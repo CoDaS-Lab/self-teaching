@@ -41,6 +41,8 @@ class ActiveLearner:
         assert self.n_features > 0
 
         hyp_space = []
+        blank_hyp = [0 for _ in range(self.n_features)]
+        hyp_space.append(blank_hyp)
         for i in range(1, self.n_features + 1):
             for j in range(self.n_features - i + 1):
                 hyp = [0 for _ in range(self.n_features)]

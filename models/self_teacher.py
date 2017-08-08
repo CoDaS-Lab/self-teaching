@@ -45,6 +45,8 @@ class SelfTeacher:
     def create_line_hyp_space(self):
         """Creates a hypothesis space of line concepts"""
         hyp_space = []
+        blank_hyp = [0 for _ in range(self.n_features)]
+        hyp_space.append(blank_hyp)
         for i in range(1, self.n_features + 1):
             for j in range(self.n_features - i + 1):
                 hyp = [0 for _ in range(self.n_features)]
@@ -207,7 +209,7 @@ class SelfTeacher:
 
         hypothesis_found = False
 
-        print("true hyp", self.true_hyp)
+        # print("true hyp", self.true_hyp)
 
         while hypothesis_found != True:
             # run updates for learning and teacher posterior
