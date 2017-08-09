@@ -133,15 +133,12 @@ class ActiveLearner:
 
         return np.dot(eig_vec, eig_weights)
 
-    # TODO: change n_steps to something more reasonable
     def run(self, n_steps=None):
         """Runs the active learner until the true hypothesis is discovered"""
 
         # set n steps to be the number of features if not None
         if n_steps is None:
             n_steps = self.n_features
-
-        # assert self.true_hyp in self.hyp_space
 
         queries = np.arange(self.n_features)
 
@@ -151,31 +148,25 @@ class ActiveLearner:
             for i, query in enumerate(queries):
                 eig[i] = self.expected_information_gain(query)
 
-            # print("eig", eig)
-
             # save prob of selecting features
             if self.n_obs == 0:
                 self.first_feature_prob = eig / np.sum(eig)
 
-            # TODO: fix/clean up later
             # select query with maximum expected information gain
             if n_steps is not None:
                 query = queries[np.random.choice(
                     np.where(eig == np.amax(eig))[0])]
             else:
                 # sample proportionally
-                # print(np.sum(np.abs(eig / np.nansum(eig))))
                 query = np.random.choice(queries, p=np.abs(eig / np.sum(eig)))
-
-            # print("selected feature", query)
 
             # update model
             query_y = self.true_hyp[query]
             self.update(query, query_y)
 
             # remove query from set of queries
-            query_idx = np.argwhere(queries == query)
-            queries = np.delete(queries, query_idx)
+            # query_idx = np.argwhere(queries == query)
+            # queries = np.delete(queries, query_idx)
 
             # increment number of observations and decrease number of steps
             self.n_obs += 1
