@@ -192,13 +192,6 @@ class SelfTeacher:
 
             self_teaching_data = np.random.choice(np.arange(self.n_features),
                                                   p=self_teaching_prob)
-
-            # print("self teaching posterior", self_teaching_prob)
-            # print(np.isclose(self_teaching_prob[0], self_teaching_prob[3]))
-            # print(np.where(np.isclose(self_teaching_prob, np.amax(self_teaching_prob))))
-            # self_teaching_data = np.random.choice(
-            #     np.where(np.isclose(self_teaching_prob, np.amax(self_teaching_prob)))[0])
-            # print("sampled teaching feature", self_teaching_data)
         else:
             print("Error!")
 

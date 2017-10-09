@@ -29,8 +29,9 @@ class TeacherRollout:
         self.learner_posterior = self.learner_prior
         self.true_hyp_idx = np.random.randint(len(self.hyp_space))
         self.true_hyp = self.hyp_space[self.true_hyp_idx]
-        self.posterior_true_hyp = np.ones(self.n_features + 1)
+        self.posterior_true_hyp = np.zeros(self.n_features + 1)
         self.posterior_true_hyp[0] = 1 / self.n_hyp
+        self.ci_iter = 0
 
     def create_hyp_space(self):
         """Creates a hypothesis space of line concepts"""
@@ -88,16 +89,23 @@ class TeacherRollout:
         self.true_hyp_idx = np.where(self.true_hyp in self.hyp_space)[0]
 
     def update_learner_posterior(self):
-        """Calculates the unnormalized posterior across all 
+        """Calculates the unnormalized posterior across all
         possible feature/label observations"""
 
         lik = self.likelihood()  # p(y|x, h)
         teaching_posterior = self.get_teaching_posterior()
+        # replace zeros with small prob
+        teaching_posterior[np.where(
+            teaching_posterior == 0.0)] = 10 ** -10
+
+        # scale teaching posterior
+        # teaching_posterior = teaching_posterior ** 0.25 / \
+        #     np.exp(teaching_posterior) ** 0.25
 
         # calculate posterior
         # p(h|x, y) = p(y|x, h) * p(x|h) * p(h)
-        self.learner_posterior = lik * teaching_posterior * \
-            self.learner_posterior  # use existing posterior as prior
+        self.learner_posterior = lik * self.learner_posterior * \
+            teaching_posterior  # use existing posterior as prior
 
         # normalize across each hypothesis
         self.learner_posterior = np.nan_to_num(self.learner_posterior /
@@ -117,7 +125,6 @@ class TeacherRollout:
         transition_prob = np.zeros((self.n_hyp, self.n_hyp))
         for i in range(len(active_learners)):
             transition_prob[i, :] = active_learners[i].posterior
-        # print(transition_prob)
         self.transition_prob_matrix = transition_prob
 
         # calculate p(x|h*) = p(x|h') * p(h'|h*) and marginalize across all hypotheses
@@ -138,8 +145,9 @@ class TeacherRollout:
         prob_joint_data = np.tile(prob_joint_data, (self.n_hyp, 1, 1))
 
         # multiply with posterior to get overall joint
-        # p(h, x, y) = p(h|, x, y) * p(x, y)
+        # p(h, x, y) = p(h|x, y) * p(x, y)
         learner_posterior = self.get_learner_posterior()
+        learner_posterior[np.where(learner_posterior == 0.0)] = 10 ** -10
         prob_joint = learner_posterior * prob_joint_data
 
         # marginalize over y, i.e. p(h, x), and broadcast result
@@ -150,10 +158,12 @@ class TeacherRollout:
 
         # get conditional prob, i.e. p(x|h) = p(h, x) / \sum_x p(h, x)
         prob_conditional_features = prob_joint_hyp_features / \
-            np.repeat(np.sum(prob_joint_hyp_features, axis=1),
-                      self.n_features).reshape(
-                          self.n_hyp, self.n_features, self.n_labels)
+            np.repeat(np.sum(prob_joint_hyp_features, axis=1), self.n_features).reshape(
+                self.n_hyp, self.n_features, self.n_labels)
         prob_conditional_features = np.nan_to_num(prob_conditional_features)
+
+        # print("prob conditional")
+        # print(prob_conditional_features)
 
         return prob_conditional_features
 
@@ -161,21 +171,38 @@ class TeacherRollout:
         """Calculates the posterior for self-teaching with rollout"""
 
         prob_conditional_features = self.conditional_feature_prob()
-        # print(prob_conditional_features.shape)
-        # print(self.transition_prob.shape)
 
         # calculate teaching posterior differently depending on number of observations
         if self.n_obs < self.n_steps:
-            # print("using roll out")
-            # sum_h p(x|h') * p(h'|h*)
+            # p(x|h*) = sum_h* p(x|h') * p(h'|h*)
             self.teaching_posterior = np.sum(
                 prob_conditional_features * self.transition_prob, axis=0)
-            # print("rollout", self.teaching_posterior.shape)
         else:
-            # print("using self teaching")
-            self.teaching_posterior = np.sum(
-                prob_conditional_features * self.learner_posterior, axis=0)
-            # print("self teaching", self.teaching_posterior.shape)
+            # print("n obs", self.n_obs)
+            teaching_posterior = np.sum(
+                prob_conditional_features * self.learner_posterior, axis=(0, 2))
+
+            # normalize
+            teaching_posterior = teaching_posterior / \
+                np.sum(teaching_posterior)
+
+            # braodcast
+            teaching_posterior = np.broadcast_to(teaching_posterior,
+                                                 (self.n_hyp,
+                                                  self.n_labels,
+                                                  self.n_features))
+
+            # save posterior
+            self.teaching_posterior = np.array(
+                [post.T for post in teaching_posterior])
+
+            # print(self.teaching_posterior)
+
+            # print(self.teaching_posterior)
+            # TODO: check if symmetric
+            assert np.all(
+                self.teaching_posterior[:, :, 0] ==
+                self.teaching_posterior[:, :, 1])
 
     def sample_teaching_posterior(self):
         """Sample a data point based off the self-teaching posterior"""
@@ -193,21 +220,29 @@ class TeacherRollout:
             teaching_posterior = (self.teaching_posterior.T * teacher_prior).T
 
             teaching_posterior = np.sum(teaching_posterior, axis=0)
+
+            # get teaching posterior
+
+            # note: summing over y to get this result
+            teaching_posterior_sample = np.sum(teaching_posterior, axis=1)
         else:
             # when using self teaching, average across all hypotheses instead
-            teaching_posterior = np.sum(
-                teaching_posterior * self.learner_posterior, axis=0)
-
-        # normalize and extract first column (columns are duplicates)
-        teaching_posterior = teaching_posterior / \
-            np.sum(teaching_posterior, axis=0)
-
-        teaching_posterior_sample = teaching_posterior[:, 0]
+            # print(self.teaching_posterior)
+            teaching_posterior_sample = teaching_posterior[0, :, 0]
+            # teaching_posterior = np.sum(
+            #     self.teaching_posterior * self.learner_posterior, axis=0)
+            # print(teaching_posterior)
+            # teaching_posterior = self.teaching_posterior
 
         # set probability of selecting already observed features to be zero
         self.observed_features = self.observed_features.astype(int)
+
         if self.observed_features.size != 0:
             teaching_posterior_sample[self.observed_features] = 0
+
+        # normalize teaching posterior sample
+        teaching_posterior_sample = np.nan_to_num(teaching_posterior_sample /
+                                                  np.nansum(teaching_posterior_sample))
 
         # select new teaching point proportionally
         if np.all(np.sum(teaching_posterior_sample)) != 0:
@@ -215,6 +250,8 @@ class TeacherRollout:
                                              p=teaching_posterior_sample /
                                              np.nansum(teaching_posterior_sample))
             teaching_data = np.nan_to_num(teaching_data)
+        else:
+            assert False
 
         return teaching_data
 
@@ -225,10 +262,12 @@ class TeacherRollout:
 
         # calculate transition prob at the beginning
         self.rollout()
+        # print(self.transition_prob_matrix)
 
-        while hypothesis_found != True:
-            ci_iters = 50
+        while hypothesis_found != True and self.n_obs < self.n_features:
+            ci_iters = 10
             for i in range(ci_iters):
+                self.ci_iter = i
                 self.update_learner_posterior()
                 self.update_teaching_posterior()
 
@@ -244,7 +283,6 @@ class TeacherRollout:
             updated_learner_posterior = self.learner_posterior[:, teaching_sample_feature,
                                                                teaching_sample_label]
 
-            print(updated_learner_posterior)
             # check for valid probability distribution
             assert np.isclose(np.sum(updated_learner_posterior), 1.0)
 
@@ -255,14 +293,35 @@ class TeacherRollout:
                                                                         self.n_labels)
 
             # check if any hypothesis has probability one
-            if np.any(updated_learner_posterior == 1.0):
+            if np.any(updated_learner_posterior == 1.0) and \
+               self.true_hyp_idx != np.asscalar((np.where(updated_learner_posterior == 1.0)[0])):
+                print("n steps", self.n_steps)
+                print(
+                    "error, learner converged to the wrong hypothesis, but will continue")
+                print("true hyp", self.true_hyp_idx)
+                print("guess hyp", np.asscalar(
+                    (np.where(updated_learner_posterior == 1.0)[0])))
+                # assert False
+
+            if np.any(updated_learner_posterior == 1.0) and \
+               self.true_hyp_idx == \
+               np.asscalar((np.where(updated_learner_posterior == 1.0))[0]):
                 hypothesis_found = True
-                true_hyp_found_idx = np.where(updated_learner_posterior == 1.0)
+                true_hyp_found_idx = np.where(
+                    updated_learner_posterior == 1.0)
+                # print("hypothesis found! in", self.n_obs + 1, "steps")
+                # print(updated_learner_posterior)
+                # print("true hyp", self.true_hyp_idx)
+                # print("guess hyp", np.asscalar(true_hyp_found_idx[0]))
+                self.posterior_true_hyp[self.n_obs + 1:] = 1
+
+                # check that true_hyp_found_idx is the true idx
+                assert self.true_hyp_idx == np.asscalar(
+                    true_hyp_found_idx[0])
 
             # increment observations
             self.n_obs += 1
 
-            # save posterior probability of true hypothesis
             self.posterior_true_hyp[self.n_obs] = updated_learner_posterior[self.true_hyp_idx]
 
         return self.n_obs, self.posterior_true_hyp
