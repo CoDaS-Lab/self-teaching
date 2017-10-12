@@ -100,9 +100,12 @@ class SelfTeacher:
         self_teaching_posterior = self.get_self_teaching_posterior()
 
         # calculate posterior
-        self.learner_posterior = lik * self_teaching_posterior * \
-            self.learner_posterior  # use existing posterior as prior
+        # self.learner_posterior = lik * self_teaching_posterior * \
+        #     self.learner_posterior  # use existing posterior as prior
 
+        # new way of calculating posterior w/o teaching posterior
+        self.learner_posterior = lik * self.learner_posterior
+        
         # normalize across each hypothesis
         self.learner_posterior = np.nan_to_num(self.learner_posterior /
                                                np.sum(self.learner_posterior, axis=0))
@@ -143,7 +146,7 @@ class SelfTeacher:
 
         # calculate equation for self-teaching
         # p(x|D) = \sum_h p(x|h) * p(h|D)
-        self_teaching_posterior = np.sum(prob_conditional_features * learner_posterior,
+        self_teaching_posterior = np.sum(prob_conditional_features * self.learner_prior,
                                          axis=(0, 2))
 
         # normalize
@@ -176,24 +179,26 @@ class SelfTeacher:
             self_teaching_posterior_sample[self.observed_features] = 0
 
         # # select max
-        # self_teaching_data = self.features[np.random.choice(
-        #     np.where(self_teaching_posterior_sample ==
-        #              np.amax(self_teaching_posterior_sample))[0])]
+        self_teaching_data = self.features[np.random.choice(
+            np.where(self_teaching_posterior_sample ==
+                     np.amax(self_teaching_posterior_sample))[0])]
 
+        print(self_teaching_posterior_sample)
+        
         if self.n_obs == 0:
             self.first_feature_prob = self_teaching_posterior_sample
 
         # select proportionally
-        if np.all(np.sum(self_teaching_posterior_sample)) != 0:
-            # print("obs", self.n_obs)
+        # if np.all(np.sum(self_teaching_posterior_sample)) != 0:
+        #     # print("obs", self.n_obs)
 
-            self_teaching_prob = self_teaching_posterior_sample / \
-                np.nansum(self_teaching_posterior_sample)
+        #     self_teaching_prob = self_teaching_posterior_sample / \
+        #         np.nansum(self_teaching_posterior_sample)
 
-            self_teaching_data = np.random.choice(np.arange(self.n_features),
-                                                  p=self_teaching_prob)
-        else:
-            print("Error!")
+        #     self_teaching_data = np.random.choice(np.arange(self.n_features),
+        #                                           p=self_teaching_prob)
+        # else:
+        #     print("Error!")
 
         return self_teaching_data
 
