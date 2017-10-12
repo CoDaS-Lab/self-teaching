@@ -19,11 +19,10 @@ class Teacher:
                                          for _ in range(self.n_labels)]
                                         for _ in range(self.n_features)]
                                        for _ in range(self.n_hyp)])
-        self.teacher_posterior = np.array([[[1 / self.n_hyp
+        self.teacher_posterior = np.array([[[1 / (self.n_features * self.n_labels)
                                              for _ in range(self.n_labels)]
                                             for _ in range(self.n_features)]
                                            for _ in range(self.n_hyp)])
-
         if true_hyp is not None:
             self.true_hyp = true_hyp
             self.true_hyp = self.true_hyp.tolist()
@@ -31,13 +30,9 @@ class Teacher:
                 np.where([np.all(true_hyp == hyp)
                           for hyp in self.hyp_space])[0][0]
             self.true_hyp_idx = self.true_hyp_idx.astype(int)
-            # print("true hyp", self.true_hyp)
-            # print("true hyp idx", self.true_hyp_idx)
         else:
             self.true_hyp_idx = np.random.randint(len(self.hyp_space))
             self.true_hyp = self.hyp_space[self.true_hyp_idx]
-            # print("true hyp", self.true_hyp)
-            # print("true hyp idx", self.true_hyp_idx)
 
         self.learner_posterior = self.learner_prior
         self.posterior_true_hyp = np.ones(self.n_features + 1)
@@ -148,8 +143,6 @@ class Teacher:
 
         # get teacher likelihood and select data point
         teacher_posterior = self.get_teacher_posterior()
-        # print(teacher_posterior[self.true_hyp_idx])
-        # print(teacher_posterior[self.true_hyp_idx])
         teacher_posterior_true_hyp = teacher_posterior[self.true_hyp_idx, :, 0]
 
         # set probability of selecting observed features to be zero
@@ -157,75 +150,43 @@ class Teacher:
         if self.observed_features.size != 0:
             teacher_posterior_true_hyp[self.observed_features] = 0
 
-        # TODO: here is where to save the probability of selecting data
-        # print(self.true_hyp)
-        # print(teacher_posterior_true_hyp)
-
         if self.n_obs == 0:
             self.first_feature_prob = teacher_posterior_true_hyp
-
-        # print("teacher posterior", teacher_posterior_true_hyp)
 
         # select max
         teacher_data = self.features[np.random.choice(
             np.where(teacher_posterior_true_hyp == np.amax(teacher_posterior_true_hyp))[0])]
 
-        # print(teacher_data)
-
-        # select data point, and normalize if possible
-        # if np.all(np.sum(teacher_posterior_true_hyp)) != 0:
-        #     teacher_data = np.random.choice(np.arange(self.n_features),
-        #                                     p=teacher_posterior_true_hyp /
-        #                                     np.nansum(teacher_posterior_true_hyp))
-        #     teacher_data = np.nan_to_num(teacher_data)
-
         return teacher_data
+
+    def run_ci(n_iters=5):
+        """Run cooperative inference for n_iters"""
+        for i in range(n_iters):
+            self.update_learner_posterior
+            self.update_teacher_posterior
 
     def run(self):
         """Run teacher until correct hypothesis is determined"""
 
-        # sample a random true hypothesis
-        # self.true_hyp_idx = np.random.randint(len(self.hyp_space))
-        # self.true_hyp = self.hyp_space[self.true_hyp_idx]
-
         hypothesis_found = False
-        # true_hyp_found_idx = -1
 
         while hypothesis_found != True:
-            # run updates for learner posterior and teacher likelihood until convergence
-            ci_iters = 5
-            for i in range(ci_iters):
-                self.update_learner_posterior()
-                self.update_teacher_posterior()
-                # print(i, self.teacher_posterior)
+            # run ci updates for learner posterior and teacher likelihood
+            run_ci()
 
             # sample data point from teacher
             teaching_sample_feature = self.sample_teacher_posterior()
             teaching_sample_label = self.true_hyp[teaching_sample_feature]
-            self.observed_features = np.append(
-                self.observed_features, teaching_sample_feature)
-            self.observed_labels = np.append(
-                self.observed_labels, teaching_sample_label)
-
-            # print("teaching feature", teaching_sample_feature)
-            # print("teaching label", teaching_sample_label)
 
             # get learner posterior and broadcast
             updated_learner_posterior = self.learner_posterior[:, teaching_sample_feature,
                                                                teaching_sample_label]
 
-            # print("learner post", self.learner_posterior)
-            # print("updated learner post", updated_learner_posterior)
-
             # update new learner posterior
-            # print(updated_learner_posterior)
             self.learner_posterior = np.repeat(updated_learner_posterior, self.n_labels *
                                                self.n_features).reshape(self.n_hyp,
                                                                         self.n_features,
                                                                         self.n_labels)
-
-            # print("learner posterior", updated_learner_posterior)
-            # print("true hyp idx", self.true_hyp_idx)
 
             # check if any hypothesis has probability one
             if np.any(updated_learner_posterior == 1) and \
@@ -235,10 +196,16 @@ class Teacher:
                 hypothesis_found = True
                 true_hyp_found_idx = np.where(updated_learner_posterior == 1)
 
+            # save observed feature and label
+            self.observed_features = np.append(
+                self.observed_features, teaching_sample_feature)
+            self.observed_labels = np.append(
+                self.observed_labels, teaching_sample_label)
+                
             # increment observations
             self.n_obs += 1
 
             # save posterior probability of true hypothesis
             self.posterior_true_hyp[self.n_obs] = updated_learner_posterior[self.true_hyp_idx]
 
-        return self.n_obs, self.posterior_true_hyp, self.first_feature_prob
+        return self
