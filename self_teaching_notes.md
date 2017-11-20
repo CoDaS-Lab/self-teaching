@@ -84,8 +84,6 @@ To update the learner's posterior, we run update_learner_posterior which calcula
 
 $$P_L(h|x, y) = \frac{P(y|x, h) P_T(x|h)}{\sum_h P(y|x, h') P_T(x|h')}$$
 
-Note: This seems wrong compared to the equation used in the paper
-
 To update the self-teaching posterior, we run update_self_teaching_posterior which calculates:
 
 prob_joint_data: $P(x, y) = \frac{1}{|x||y|} \quad \forall x, y$
@@ -98,7 +96,7 @@ prob_conditional_features: $P(x|h') = \frac{P(h', x)}{P(h')} = \frac{P(h', x)}{\
 
 self_teaching_posterior: $P(x) \propto \sum_{h'} \sum_y P(x|h) P(h'|x, y)$ 
 
-Right now the self-teaching posterior code uses $P(h'|x, y)$ at the end, but according to the equations this should be replaced with the prior $P(h')$ instead (or does this equation actually refer to the posterior based on the rest of the notation in the paper??).
+Right now the self-teaching posterior code uses $P(h'|x, y)$ at the end, but according to the equations this should be replaced with the prior $P(h')$ instead. Discussion with Scott resolved this, it should use the prior instead and when done so it shows that the beahviour of the self-teaching model acts like an active learner instead. 
 
 In order to learn, the self-teacher uses their own self-teaching posterior to sample a feature $x^*$ to observe, as described in sample_self_teaching_posterior, where:
 
@@ -114,7 +112,7 @@ In the batch version of the self-teaching model, rather than evaluating which fe
 
 However, once we have obtained a self-teaching posterior, instead of it looking having the form $P_T(x)$, it is of the form $P_T(x_1, \dots, x_n)$. To recover the probability of teaching each individual feature, we sum across all sets of teaching points that contain that feature and divide by the total number of features as follows:
 
-$$ P_T(x) = \sum_{x \in (x_1, \dots, x_n)} \frac{P_T(x_1, \dots, x_n)}{zn}$$
+$$ P_T(x) = \sum_{x \in (x_1, \dots, x_n)} \frac{P_T(x_1, \dots, x_n)}{n}$$
 
 ## Incremental self-teaching model
 In the incremental self-teaching model, we extend the self-teaching model
@@ -124,3 +122,7 @@ In the incremental self-teaching model, we extend the self-teaching model
 Here, I consider what it is like to teach in the boundary game
 
 $$\mathcal{H} = \{111, 011, 001, 000\}$$
+
+### Batch self-teaching
+
+
