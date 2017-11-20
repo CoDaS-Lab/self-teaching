@@ -1,15 +1,19 @@
 import numpy as np
+from itertools import combinations
+from itertools import product
 
-
-class SelfTeacher:
-    def __init__(self, n_features, hyp_space_type, true_hyp=None, sampling="max"):
-        self.n_features = n_features
-        self.n_labels = 2
+class BatchSelfTeacher:
+    def __init__(self, n_features, hyp_space_type, batch_size, true_hyp=None, sampling="max"):
+        self.batch_size = batch_size
+        self.n_features_single = n_features
+        self.n_labels_single = 2
+        self.features = list(combinations(np.arange(self.n_features_single), self.batch_size))
+        self.labels = list(product(np.arange(self.n_labels_single), repeat=self.batch_size))
+        self.n_features = len(self.features)
+        self.n_labels = len(self.labels)
         self.observed_features = np.array([])
         self.observed_labels = np.array([])
         self.n_obs = 0
-        self.features = np.arange(self.n_features)
-        self.labels = np.arange(self.n_labels)
         if hyp_space_type == "boundary":
             self.hyp_space = self.create_boundary_hyp_space()
         elif hyp_space_type == "line":
@@ -28,7 +32,6 @@ class SelfTeacher:
                                                   for _ in range(self.n_features)]
                                                  for _ in range(self.n_hyp)])
         self.learner_posterior = self.learner_prior
-        self.sampling = sampling
 
         if true_hyp is not None:
             self.true_hyp = true_hyp
@@ -42,15 +45,17 @@ class SelfTeacher:
         self.posterior_true_hyp = np.ones(self.n_features + 1)
         self.posterior_true_hyp[0] = 1 / self.n_hyp
         self.first_feature_prob = np.zeros(self.n_features)
+        self.sampling = sampling
 
+        
     def create_line_hyp_space(self):
         """Creates a hypothesis space of line concepts"""
         hyp_space = []
-        blank_hyp = [0 for _ in range(self.n_features)]
+        blank_hyp = [0 for _ in range(self.n_features_single)]
         hyp_space.append(blank_hyp)
-        for i in range(1, self.n_features + 1):
-            for j in range(self.n_features - i + 1):
-                hyp = [0 for _ in range(self.n_features)]
+        for i in range(1, self.n_features_single + 1):
+            for j in range(self.n_features_single - i + 1):
+                hyp = [0 for _ in range(self.n_features_single)]
                 hyp[j:j + i] = [1 for _ in range(i)]
                 hyp_space.append(hyp)
         hyp_space = np.array(hyp_space)
@@ -59,11 +64,14 @@ class SelfTeacher:
     def create_boundary_hyp_space(self):
         """Creates a hypothesis space of concepts defined by a linear boundary"""
         hyp_space = []
-        for i in range(self.n_features + 1):
-            hyp = [1 for _ in range(self.n_features)]
+        for i in range(self.n_features_single + 1):
+            hyp = [1 for _ in range(self.n_features_single)]
             hyp[:i] = [0 for _ in range(i)]
             hyp_space.append(hyp)
         hyp_space = np.array(hyp_space)
+        
+        assert len(hyp_space) == self.n_features_single + 1
+        
         return hyp_space
 
     def likelihood(self):
@@ -75,7 +83,12 @@ class SelfTeacher:
         for i, hyp in enumerate(self.hyp_space):
             for j, feature in enumerate(self.features):
                 for k, label in enumerate(self.labels):
-                    if hyp[feature] == label:
+                    consistent = True
+                    # loop over all teaching features to check
+                    for l in range(len(feature)):
+                        if hyp[feature[l]] != label[l]:
+                            consistent = False
+                    if consistent:
                         lik[i, j, k] = 1
                     else:
                         lik[i, j, k] = 0
@@ -92,7 +105,7 @@ class SelfTeacher:
 
     def set_self_teaching_posterior(self, self_teaching_posterior):
         self.self_teaching_posterior = self_teaching_posterior
-
+        
     def update_learner_posterior(self):
         """Calculates the unnormalized posterior across all
         possible feature/label observations"""
@@ -110,8 +123,8 @@ class SelfTeacher:
         # normalize across each hypothesis
         self.learner_posterior = np.nan_to_num(self.learner_posterior /
                                                np.sum(self.learner_posterior, axis=0))
-
-    def update_self_teaching_posterior(self):
+        
+    def update_self_teaching_posterior(self, n_steps=1):
         """Calculates the posterior of self teaching for determining which points
         to actively select using the teaching equations"""
 
@@ -147,8 +160,7 @@ class SelfTeacher:
 
         # calculate equation for self-teaching
         # p(x|D) = \sum_h p(x|h) * p(h|D)
-        self_teaching_posterior = np.sum(prob_conditional_features * self.learner_prior,
-                                         axis=(0, 2))
+        self_teaching_posterior = np.sum(prob_conditional_features * self.learner_prior, axis=(0, 2))
 
         # normalize
         self_teaching_posterior = self_teaching_posterior / \
@@ -163,71 +175,92 @@ class SelfTeacher:
         # save posterior
         self.self_teaching_posterior = np.array(
             [post.T for post in self_teaching_posterior])
-
+        
+    def get_feature_indices(self):
+        """Get indices of features"""
+        
     def sample_self_teaching_posterior(self):
-        """Sample a data point based off the self-teaching posterior"""
-
-        # get teacher posterior and select a data point
-        self_teaching_posterior = self.get_self_teaching_posterior()
-        self_teaching_posterior_sample = self_teaching_posterior[0, :, 0]
-
-        # check posterior sample is a valid probability distribution
+        """Sample a data point based off the self teaching posterior"""
+        
+        # get teaching posterior
+        batch_self_teaching_posterior = self.get_self_teaching_posterior()
+        # only get first element since they are all the same
+        batch_self_teaching_posterior = batch_self_teaching_posterior[0, :, 0]
+        
+        # convert self_teaching_posterior to over single features
+        self_teaching_posterior_sample = np.zeros(self.n_features_single)
+        for i in range(self.n_features_single):
+            idx = np.where(np.array(self.features) == i)
+            idx = idx[0] # get first element from np.where with indices
+            # self teaching posterior sums over prob with all sets of features with each feature, dividing by the number of features
+            self_teaching_posterior_sample[i] = np.sum(batch_self_teaching_posterior[idx]) / self.batch_size
+            
+        ## print(self_teaching_posterior)
+        
+        # check for valid probability distribution
         assert np.isclose(np.sum(self_teaching_posterior_sample), 1.0)
 
-        # set probability of selecting observed features to be zero
-        self.observed_features = self.observed_features.astype(int)
-        if self.observed_features.size != 0:
-            self_teaching_posterior_sample[self.observed_features] = 0
-
-        self_teaching_data = -1
-        if self.sampling == "max":
-            # select max
-            self_teaching_data = self.features[np.random.choice(
-                np.where(self_teaching_posterior_sample ==
-                         np.amax(self_teaching_posterior_sample))[0])]
-        else:
-            # select proportionally
-            if np.all(np.sum(self_teaching_posterior_sample)) != 0:
-                self_teaching_prob = self_teaching_posterior_sample / \
-                                     np.nansum(self_teaching_posterior_sample)
-                self_teaching_data = np.random.choice(np.arange(self.n_features),
-                                                  p=self_teaching_prob)
-            else:
-                print("Error!")
+        # zero out observed features
+        #self.observed_features = self.observed_features.astype(int)
+        #if self.observed_features.size != 0:
+        #    self_teaching_posterior_sample[self.observed_features] = 0
         
+        # save first observed feature
         if self.n_obs == 0:
             self.first_feature_prob = self_teaching_posterior_sample
+            # self.first_feature_prob = batch_self_teaching_posterior
+        
+        # sample from self teaching posterior
+        print("self teaching posterior", self_teaching_posterior_sample)
+        if np.all(np.sum(self_teaching_posterior_sample)) != 0:
+            # normalize
+            self_teaching_prob = self_teaching_posterior_sample / \
+                np.nansum(self_teaching_posterior_sample)
+                
+            self_teaching_data = np.random.choice(np.arange(self.n_features_single),
+                                                  p=self_teaching_prob)
+        else:
+            print("Error!")
 
         return self_teaching_data
-
+    
     def run(self):
         """Run self-teaching until a correct hypothesis is determined"""
 
         hypothesis_found = False
 
-        # print("true hyp", self.true_hyp)
+        print("true hyp idx", self.true_hyp_idx)
 
         while hypothesis_found != True:
             # run updates for learning and teacher posterior
-            ci_iters = 15
+            ci_iters = 5
             for i in range(ci_iters):
                 self.update_learner_posterior()
                 self.update_self_teaching_posterior()
 
             # sample data point from self-teaching
             self_teaching_sample_feature = self.sample_self_teaching_posterior()
-            # print(self_teaching_sample_feature)
+            print("sample feature", self_teaching_sample_feature)
             self_teaching_sample_label = self.true_hyp[self_teaching_sample_feature]
             self.observed_features = np.append(
                 self.observed_features, self_teaching_sample_feature)
             self.observed_labels = np.append(
                 self.observed_labels, self_teaching_sample_label)
 
-            # get learner posterior and broadcast
-            updated_learner_posterior = self.learner_posterior[:, self_teaching_sample_feature,
-                                                               self_teaching_sample_label]
+            # get learner posterior and broadcast by averaging over features
+            # and labels from sampled set
+            sample_feature_idx = np.where(self.features == self_teaching_sample_feature)
+            sample_label_idx = np.where(self.labels == self_teaching_sample_label)
+            sample_feature_idx = sample_feature_idx[0]
+            sample_label_idx = sample_label_idx[0]
+            print(sample_feature_idx)
+            print(sample_label_idx)
+            i1, i2 = np.ix_(sample_feature_idx, sample_label_idx)
+            updated_learner_posterior = np.mean(self.learner_posterior[:, i1, i2], axis=(1, 2))
+            updated_learner_posterior = updated_learner_posterior / np.sum(updated_learner_posterior)
 
             # check for valid probability distribution
+            print("new learner posterior", updated_learner_posterior)
             assert np.isclose(np.sum(updated_learner_posterior), 1.0)
 
             # update new learner posterior by broadcasting
@@ -242,11 +275,49 @@ class SelfTeacher:
                np.asscalar((np.where(updated_learner_posterior == 1.0))[0]):
                 hypothesis_found = True
                 true_hyp_found_idx = np.where(updated_learner_posterior == 1)
-
+            elif np.any(updated_learner_posterior == 1.0):
+                print("incorrect hypothesis")
+                raise Exception
+                
             # increment observations
             self.n_obs += 1
 
             # save posterior probability of true hypothesis
-            self.posterior_true_hyp[self.n_obs] = updated_learner_posterior[self.true_hyp_idx]
+            # self.posterior_true_hyp[self.n_obs] = updated_learner_posterior[self.true_hyp_idx]
 
         return self.n_obs, self.posterior_true_hyp, self.first_feature_prob
+        
+    def get_first_feature_prob(self):
+        # run updates for learning and teacher posterior
+        ci_iters = 5
+        for i in range(ci_iters):
+            self.update_learner_posterior()
+            self.update_self_teaching_posterior()
+            
+        # get teaching posterior
+        batch_self_teaching_posterior = self.get_self_teaching_posterior()
+        # only get first element since they are all the same
+        batch_self_teaching_posterior = batch_self_teaching_posterior[0, :, 0]
+        
+        # convert self_teaching_posterior to over single features
+        self_teaching_posterior_sample = np.zeros(self.n_features_single)
+        for i in range(self.n_features_single):
+            idx = np.where(np.array(self.features) == i)
+            idx = idx[0] # get first element from np.where with indices
+            # self teaching posterior sums over prob with all sets of features with each feature, dividing by the number of features
+            self_teaching_posterior_sample[i] = np.sum(batch_self_teaching_posterior[idx]) / self.batch_size
+            
+        return batch_self_teaching_posterior
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        

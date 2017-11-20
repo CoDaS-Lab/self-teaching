@@ -2,12 +2,13 @@ import numpy as np
 
 
 class SelfTeacher:
-    def __init__(self, n_features, hyp_space_type, true_hyp=None, sampling="max"):
-        self.n_features = n_features
+    def __init__(self, n_features, hyp_space_type, true_hyp=None):
+                self.n_features = n_features
         self.n_labels = 2
         self.observed_features = np.array([])
         self.observed_labels = np.array([])
         self.n_obs = 0
+        self.n_steps = 2
         self.features = np.arange(self.n_features)
         self.labels = np.arange(self.n_labels)
         if hyp_space_type == "boundary":
@@ -28,7 +29,6 @@ class SelfTeacher:
                                                   for _ in range(self.n_features)]
                                                  for _ in range(self.n_hyp)])
         self.learner_posterior = self.learner_prior
-        self.sampling = sampling
 
         if true_hyp is not None:
             self.true_hyp = true_hyp
@@ -101,18 +101,16 @@ class SelfTeacher:
         self_teaching_posterior = self.get_self_teaching_posterior()
 
         # calculate posterior
-        # self.learner_posterior = lik * self_teaching_posterior * \
-        #     self.learner_posterior  # use existing posterior as prior
+        self.learner_posterior = lik * self_teaching_posterior * \
+            self.learner_posterior  # use existing posterior as prior
 
-        # new way of calculating posterior w/o teaching posterior
-        self.learner_posterior = lik * self.learner_posterior
-        
+        # TODO: return learner_posterior instead of setting value, can use for real + imagined then
         # normalize across each hypothesis
         self.learner_posterior = np.nan_to_num(self.learner_posterior /
                                                np.sum(self.learner_posterior, axis=0))
 
     def update_self_teaching_posterior(self):
-        """Calculates the posterior of self teaching for determining which points
+                """Calculates the posterior of self teaching for determining which points
         to actively select using the teaching equations"""
 
         # use same code as teacher.py to calculate teaching posterior
@@ -147,7 +145,7 @@ class SelfTeacher:
 
         # calculate equation for self-teaching
         # p(x|D) = \sum_h p(x|h) * p(h|D)
-        self_teaching_posterior = np.sum(prob_conditional_features * self.learner_prior,
+        self_teaching_posterior = np.sum(prob_conditional_features * learner_posterior,
                                          axis=(0, 2))
 
         # normalize
@@ -164,7 +162,8 @@ class SelfTeacher:
         self.self_teaching_posterior = np.array(
             [post.T for post in self_teaching_posterior])
 
-    def sample_self_teaching_posterior(self):
+
+            def sample_self_teaching_posterior(self):
         """Sample a data point based off the self-teaching posterior"""
 
         # get teacher posterior and select a data point
@@ -179,24 +178,25 @@ class SelfTeacher:
         if self.observed_features.size != 0:
             self_teaching_posterior_sample[self.observed_features] = 0
 
-        self_teaching_data = -1
-        if self.sampling == "max":
-            # select max
-            self_teaching_data = self.features[np.random.choice(
-                np.where(self_teaching_posterior_sample ==
-                         np.amax(self_teaching_posterior_sample))[0])]
-        else:
-            # select proportionally
-            if np.all(np.sum(self_teaching_posterior_sample)) != 0:
-                self_teaching_prob = self_teaching_posterior_sample / \
-                                     np.nansum(self_teaching_posterior_sample)
-                self_teaching_data = np.random.choice(np.arange(self.n_features),
-                                                  p=self_teaching_prob)
-            else:
-                print("Error!")
-        
+        # # select max
+        # self_teaching_data = self.features[np.random.choice(
+        #     np.where(self_teaching_posterior_sample ==
+        #              np.amax(self_teaching_posterior_sample))[0])]
+
         if self.n_obs == 0:
             self.first_feature_prob = self_teaching_posterior_sample
+
+        # select proportionally
+        if np.all(np.sum(self_teaching_posterior_sample)) != 0:
+            # print("obs", self.n_obs)
+
+            self_teaching_prob = self_teaching_posterior_sample / \
+                np.nansum(self_teaching_posterior_sample)
+
+            self_teaching_data = np.random.choice(np.arange(self.n_features),
+                                                  p=self_teaching_prob)
+        else:
+            print("Error!")
 
         return self_teaching_data
 
@@ -208,6 +208,10 @@ class SelfTeacher:
         # print("true hyp", self.true_hyp)
 
         while hypothesis_found != True:
+            # TODO: run imagination steps
+            while self.n_steps > 0:
+                
+            
             # run updates for learning and teacher posterior
             ci_iters = 15
             for i in range(ci_iters):

@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 
 
 class ActiveLearner:
-    def __init__(self, n_features, hyp_space_type, true_hyp=None):
+    def __init__(self, n_features, hyp_space_type, true_hyp=None, sampling="max"):
         assert(n_features > 0)
 
         self.d = []  # observed data points
@@ -34,6 +34,8 @@ class ActiveLearner:
         self.posterior_true_hyp[0] = 1 / self.n_hyp
 
         self.first_feature_prob = np.zeros(n_features)
+
+        self.sampling = sampling
 
     def create_line_hyp_space(self):
         """Creates a hypothesis space of specified size"""
@@ -152,8 +154,9 @@ class ActiveLearner:
             if self.n_obs == 0:
                 self.first_feature_prob = eig / np.sum(eig)
 
+            query = -1
             # select query with maximum expected information gain
-            if n_steps is not None:
+            if self.sampling == "max":
                 query = queries[np.random.choice(
                     np.where(eig == np.amax(eig))[0])]
             else:

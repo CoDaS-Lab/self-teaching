@@ -106,6 +106,10 @@ class Teacher:
             np.nansum(self.learner_posterior, axis=0)
         self.learner_posterior = np.nan_to_num(self.learner_posterior)
 
+        ## assertion to check all posteriors sum to one
+        # print(self.learner_posterior)
+        # assert np.allclose(np.sum(self.learner_posterior, axis=0), 1.0)
+
     def update_teacher_posterior(self):
         """Calculates the posterior of selecting data points by transforming the
         posterior p(y|x, h) to p(x|h)"""
