@@ -119,10 +119,18 @@ In the incremental self-teaching model, we extend the self-teaching model
 
 ## Teaching example: 3 features and 2 data points
 
-Here, I consider what it is like to teach in the boundary game
+Here, I consider what it is like to teach in the boundary game with the following hypotheses:
 
 $$\mathcal{H} = \{111, 011, 001, 000\}$$
 
 ### Batch self-teaching
 
+The batch self-teacher selects two different values of $\mathbf{x}$ from the set $\{01, 02, 12\}$, with each of the hypotheses having the possible sets of $\mathbf{y}$ values: $\{00, 01, 10, 11\}$.
 
+We assume a uniform prior over hypotheses and teaching sets:
+
+$$P(h) = 1/4 \quad \forall h$$
+
+$$P(\mathbf{x}) = 1/3 \quad \forall \mathbf{x}$$
+
+The likelihood $P(\mathbf{y}|\mathbf{x}, h)$ is the following:
