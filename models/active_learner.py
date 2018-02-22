@@ -1,20 +1,21 @@
 import numpy as np
-import matplotlib.pyplot as plt
+import models.utils as utils
 
 
 class ActiveLearner:
-    def __init__(self, n_features, hyp_space_type, true_hyp=None, sampling="max"):
+    def __init__(self, n_features, hyp_space_type,
+                 true_hyp=None, sampling="max"):
         assert(n_features > 0)
 
         self.d = []  # observed data points
         self.n_obs = 0  # number of observed data points
-        self.m = 2  # number of possible y values
+        self.n_labels = 2  # number of possible y values
         self.n_features = n_features
 
         if hyp_space_type == "boundary":
-            self.hyp_space = self.create_boundary_hyp_space()
+            self.hyp_space = utils.create_boundary_hyp_space(self.n_features)
         elif hyp_space_type == "line":
-            self.hyp_space = self.create_line_hyp_space()
+            self.hyp_space = utils.create_line_hyp_space(self.n_features)
 
         self.n_hyp = len(self.hyp_space)
         self.prior = np.array([1 / self.n_hyp
@@ -27,48 +28,13 @@ class ActiveLearner:
                 np.where([np.all(true_hyp == hyp)
                           for hyp in self.hyp_space])[0]
         else:
-            self.true_hyp_idx = np.random.randint(len(self.hyp_space))
+            self.true_hyp_idx = np.random.randint(self.n_hyp)
             self.true_hyp = self.hyp_space[self.true_hyp_idx]
 
         self.posterior_true_hyp = np.ones(self.n_features + 1)
         self.posterior_true_hyp[0] = 1 / self.n_hyp
-
         self.first_feature_prob = np.zeros(n_features)
-
         self.sampling = sampling
-
-    def create_line_hyp_space(self):
-        """Creates a hypothesis space of specified size"""
-
-        assert self.n_features > 0
-
-        hyp_space = []
-        blank_hyp = [0 for _ in range(self.n_features)]
-        hyp_space.append(blank_hyp)
-        for i in range(1, self.n_features + 1):
-            for j in range(self.n_features - i + 1):
-                hyp = [0 for _ in range(self.n_features)]
-                hyp[j:j + i] = [1 for _ in range(i)]
-                hyp_space.append(hyp)
-        hyp_space = np.array(hyp_space)
-        return hyp_space
-
-    def create_boundary_hyp_space(self):
-        """Creates a hypothesis space of concepts defined by a linear boundary"""
-        hyp_space = []
-        for i in range(self.n_features + 1):
-            hyp = [1 for _ in range(self.n_features)]
-            hyp[:i] = [0 for _ in range(i)]
-            hyp_space.append(hyp)
-        hyp_space = np.array(hyp_space)
-        return hyp_space
-
-    def get_true_hypothesis(self):
-        return self.true_hyp
-
-    def set_true_hypothesis(self, true_hyp):
-        self.true_hyp = true_hyp
-        self.true_hyp_idx = np.where(self.true_hyp in self.hyp_space)[0]
 
     def likelihood(self, x, y):
         """Calculates the likelihood of observing the datapoint x"""
@@ -96,11 +62,11 @@ class ActiveLearner:
             return posterior
 
     def update(self, x, y):
-        """Performs Bayesian inference to update the model based on observing x"""
+        """Updates the model based on observing x using Bayesian inference"""
 
         assert y == 0 or y == 1
 
-        lik = self.likelihood(x, y)
+        # lik = self.likelihood(x, y)
         self.posterior = self.observe(x, y)
 
     def entropy(self, p):
@@ -122,10 +88,10 @@ class ActiveLearner:
         return information_gain
 
     def expected_information_gain(self, x):
-        """Calculate the expected information gain across all possible outcomes"""
-        eig_vec = np.zeros(self.m)
-        eig_weights = np.zeros(self.m)
-        for i, y in enumerate(range(self.m)):
+        """Calculate the expected information gain across all outcomes"""
+        eig_vec = np.zeros(self.n_labels)
+        eig_weights = np.zeros(self.n_labels)
+        for i, y in enumerate(range(self.n_labels)):
             # calculate information gain
             eig_vec[i] = self.information_gain(x, y)
 
@@ -161,21 +127,19 @@ class ActiveLearner:
                     np.where(eig == np.amax(eig))[0])]
             else:
                 # sample proportionally
-                query = np.random.choice(queries, p=np.abs(eig / np.sum(eig)))
+                query = np.random.choice(queries,
+                                         p=np.abs(eig / np.sum(eig)))
 
             # update model
             query_y = self.true_hyp[query]
             self.update(query, query_y)
-
-            # remove query from set of queries
-            # query_idx = np.argwhere(queries == query)
-            # queries = np.delete(queries, query_idx)
 
             # increment number of observations and decrease number of steps
             self.n_obs += 1
             n_steps -= 1
 
             # save current posterior of true hypothesis
-            self.posterior_true_hyp[self.n_obs] = self.posterior[self.true_hyp_idx]
+            self.posterior_true_hyp[self.n_obs] = \
+                self.posterior[self.true_hyp_idx]
 
         return self.n_obs, self.posterior_true_hyp, self.first_feature_prob

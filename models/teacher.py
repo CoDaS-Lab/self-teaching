@@ -1,4 +1,5 @@
 import numpy as np
+import models.utils as utils
 
 
 class Teacher:
@@ -11,18 +12,14 @@ class Teacher:
         self.features = np.arange(self.n_features)
         self.labels = np.arange(self.n_labels)
         if hyp_space_type == "boundary":
-            self.hyp_space = self.create_boundary_hyp_space()
+            self.hyp_space = utils.create_boundary_hyp_space(self.n_features)
         elif hyp_space_type == "line":
-            self.hyp_space = self.create_line_hyp_space()
+            self.hyp_space = utils.create_line_hyp_space(self.n_features)
         self.n_hyp = len(self.hyp_space)
-        self.learner_prior = np.array([[[1 / self.n_hyp
-                                         for _ in range(self.n_labels)]
-                                        for _ in range(self.n_features)]
-                                       for _ in range(self.n_hyp)])
-        self.teacher_posterior = np.array([[[1 / (self.n_features * self.n_labels)
-                                             for _ in range(self.n_labels)]
-                                            for _ in range(self.n_features)]
-                                           for _ in range(self.n_hyp)])
+        self.learner_prior = (1 / self.n_hyp) * \
+            np.ones((self.n_hyp, self.n_features, self.n_labels))
+        self.teacher_posterior = (1 / self.n_features * self.n_labels) * \
+            np.ones((self.n_hyp, self.n_features, self.n_labels))
         if true_hyp is not None:
             self.true_hyp = true_hyp
             self.true_hyp = self.true_hyp.tolist()
@@ -31,7 +28,7 @@ class Teacher:
                           for hyp in self.hyp_space])[0][0]
             self.true_hyp_idx = self.true_hyp_idx.astype(int)
         else:
-            self.true_hyp_idx = np.random.randint(len(self.hyp_space))
+            self.true_hyp_idx = np.random.randint(self.n_hyp)
             self.true_hyp = self.hyp_space[self.true_hyp_idx]
 
         self.learner_posterior = self.learner_prior
@@ -39,31 +36,9 @@ class Teacher:
         self.posterior_true_hyp[0] = 1 / self.n_hyp
         self.first_feature_prob = np.zeros(self.n_features)
 
-    def create_line_hyp_space(self):
-        """Creates a hypothesis space of concepts"""
-        hyp_space = []
-        blank_hyp = [0 for _ in range(self.n_features)]
-        hyp_space.append(blank_hyp)
-        for i in range(1, self.n_features + 1):
-            for j in range(self.n_features - i + 1):
-                hyp = [0 for _ in range(self.n_features)]
-                hyp[j:j + i] = [1 for _ in range(i)]
-                hyp_space.append(hyp)
-        hyp_space = np.array(hyp_space)
-        return hyp_space
-
-    def create_boundary_hyp_space(self):
-        """Creates a hypothesis space of concepts defined by a linear boundary"""
-        hyp_space = []
-        for i in range(self.n_features + 1):
-            hyp = [1 for _ in range(self.n_features)]
-            hyp[:i] = [0 for _ in range(i)]
-            hyp_space.append(hyp)
-        hyp_space = np.array(hyp_space)
-        return hyp_space
-
     def likelihood(self):
-        """Calculates the likelihood of observing all possible pairs of data points"""
+        """Calculates the likelihood of observing 
+        all possible pairs of data points"""
         # returns a 66 x 11 x 2 matrix
 
         # TODO: modify function to take in multiple observations
@@ -106,7 +81,7 @@ class Teacher:
             np.nansum(self.learner_posterior, axis=0)
         self.learner_posterior = np.nan_to_num(self.learner_posterior)
 
-        ## assertion to check all posteriors sum to one
+        # assertion to check all posteriors sum to one
         # print(self.learner_posterior)
         # assert np.allclose(np.sum(self.learner_posterior, axis=0), 1.0)
 
@@ -115,10 +90,8 @@ class Teacher:
         posterior p(y|x, h) to p(x|h)"""
 
         # uniform joint over data, which is broadcasted into correct shape
-        prob_joint_data = np.array([[1 / (self.n_features * self.n_labels)
-                                     for _ in range(self.n_labels)]
-                                    for _ in range(self.n_features)])  # p(x, y)
-
+        prob_joint_data = 1 / (self.n_features * self.n_labels) * \
+            np.ones((self.n_features, self.n_labels))  # p(x, y)
         prob_joint_data = np.tile(prob_joint_data, (self.n_hyp, 1, 1))
 
         # multiply with posterior to get overall joint
@@ -135,10 +108,9 @@ class Teacher:
         # divide by prior over hypotheses to get conditional prob
         # marginalize over x, i.e. p(x | h) = p(h, x) / \sum_x p(h, x)
         prob_conditional_features = prob_joint_hyp_features / \
-            np.repeat(np.sum(prob_joint_hyp_features, axis=1), self.n_features).reshape(
-                self.n_hyp, self.n_features, self.n_labels)
-
-        # print(prob_conditional_features)
+            np.repeat(np.sum(prob_joint_hyp_features, axis=1),
+                      self.n_features).reshape(
+                          self.n_hyp, self.n_features, self.n_labels)
 
         self.teacher_posterior = np.nan_to_num(prob_conditional_features)
 
@@ -159,43 +131,45 @@ class Teacher:
 
         # select max
         teacher_data = self.features[np.random.choice(
-            np.where(teacher_posterior_true_hyp == np.amax(teacher_posterior_true_hyp))[0])]
+            np.where(teacher_posterior_true_hyp ==
+                     np.amax(teacher_posterior_true_hyp))[0])]
 
         return teacher_data
 
-    def run_ci(n_iters=5):
+    def run_ci(self, n_iters=5):
         """Run cooperative inference for n_iters"""
         for i in range(n_iters):
-            self.update_learner_posterior
-            self.update_teacher_posterior
+            self.update_learner_posterior()
+            self.update_teacher_posterior()
 
     def run(self):
         """Run teacher until correct hypothesis is determined"""
 
         hypothesis_found = False
 
-        while hypothesis_found != True:
+        while hypothesis_found is not True:
             # run ci updates for learner posterior and teacher likelihood
-            run_ci()
+            self.run_ci()
 
             # sample data point from teacher
             teaching_sample_feature = self.sample_teacher_posterior()
             teaching_sample_label = self.true_hyp[teaching_sample_feature]
 
             # get learner posterior and broadcast
-            updated_learner_posterior = self.learner_posterior[:, teaching_sample_feature,
-                                                               teaching_sample_label]
+            updated_learner_posterior = \
+                self.learner_posterior[:,
+                                       teaching_sample_feature,
+                                       teaching_sample_label]
 
             # update new learner posterior
-            self.learner_posterior = np.repeat(updated_learner_posterior, self.n_labels *
-                                               self.n_features).reshape(self.n_hyp,
-                                                                        self.n_features,
-                                                                        self.n_labels)
+            self.learner_posterior = np.repeat(
+                updated_learner_posterior, self.n_labels * self.n_features).reshape(
+                    self.n_hyp, self.n_features, self.n_labels)
 
             # check if any hypothesis has probability one
             if np.any(updated_learner_posterior == 1) and \
-               self.true_hyp_idx == \
-               np.asscalar((np.where(updated_learner_posterior == 1.0))[0]):
+                   self.true_hyp_idx == \
+                   np.asscalar((np.where(updated_learner_posterior == 1.0))[0]):
 
                 hypothesis_found = True
                 true_hyp_found_idx = np.where(updated_learner_posterior == 1)
@@ -212,4 +186,4 @@ class Teacher:
             # save posterior probability of true hypothesis
             self.posterior_true_hyp[self.n_obs] = updated_learner_posterior[self.true_hyp_idx]
 
-        return self
+        return self.n_obs, self.posterior_true_hyp, self.first_feature_prob

@@ -1,4 +1,5 @@
 import numpy as np
+import models.utils as utils
 
 
 class SelfTeacher:
@@ -11,9 +12,9 @@ class SelfTeacher:
         self.features = np.arange(self.n_features)
         self.labels = np.arange(self.n_labels)
         if hyp_space_type == "boundary":
-            self.hyp_space = self.create_boundary_hyp_space()
+            self.hyp_space = utils.create_boundary_hyp_space(self.n_features)
         elif hyp_space_type == "line":
-            self.hyp_space = self.create_line_hyp_space()
+            self.hyp_space = utils.create_line_hyp_space(self.n_features)
         self.n_hyp = len(self.hyp_space)
         self.learner_prior = np.array([[[1 / self.n_hyp
                                          for _ in range(self.n_labels)]
@@ -43,29 +44,6 @@ class SelfTeacher:
         self.posterior_true_hyp[0] = 1 / self.n_hyp
         self.first_feature_prob = np.zeros(self.n_features)
 
-    def create_line_hyp_space(self):
-        """Creates a hypothesis space of line concepts"""
-        hyp_space = []
-        blank_hyp = [0 for _ in range(self.n_features)]
-        hyp_space.append(blank_hyp)
-        for i in range(1, self.n_features + 1):
-            for j in range(self.n_features - i + 1):
-                hyp = [0 for _ in range(self.n_features)]
-                hyp[j:j + i] = [1 for _ in range(i)]
-                hyp_space.append(hyp)
-        hyp_space = np.array(hyp_space)
-        return hyp_space
-
-    def create_boundary_hyp_space(self):
-        """Creates a hypothesis space of concepts defined by a linear boundary"""
-        hyp_space = []
-        for i in range(self.n_features + 1):
-            hyp = [1 for _ in range(self.n_features)]
-            hyp[:i] = [0 for _ in range(i)]
-            hyp_space.append(hyp)
-        hyp_space = np.array(hyp_space)
-        return hyp_space
-
     def likelihood(self):
         """Calculates the likelihood of observing all possible pairs of data points"""
         # returns a 66 x 11 x 2 matrix
@@ -81,18 +59,6 @@ class SelfTeacher:
                         lik[i, j, k] = 0
         return lik
 
-    def get_learner_posterior(self):
-        return self.learner_posterior
-
-    def get_self_teaching_posterior(self):
-        return self.self_teaching_posterior
-
-    def set_learner_posterior(self, learner_posterior):
-        self.learner_posterior = learner_posterior
-
-    def set_self_teaching_posterior(self, self_teaching_posterior):
-        self.self_teaching_posterior = self_teaching_posterior
-
     def update_learner_posterior(self):
         """Calculates the unnormalized posterior across all
         possible feature/label observations"""
@@ -100,7 +66,7 @@ class SelfTeacher:
         lik = self.likelihood()  # p(y|x, h)
         self_teaching_posterior = self.get_self_teaching_posterior()
 
-        # calculate posterior
+        # # calculate posterior
         # self.learner_posterior = lik * self_teaching_posterior * \
         #     self.learner_posterior  # use existing posterior as prior
 
@@ -125,7 +91,7 @@ class SelfTeacher:
 
         # multiply with posterior to get overall joint
         # p(h, x, y) = p(h|, x, y) * p(x, y)
-        learner_posterior = self.get_learner_posterior()
+        learner_posterior = self.learner_posterior
         prob_joint = learner_posterior * prob_joint_data
 
         # marginalize over y, i.e. p(h, x), and broadcast result
@@ -208,33 +174,33 @@ class SelfTeacher:
         # print("true hyp", self.true_hyp)
 
         while hypothesis_found != True:
-            # run updates for learning and teacher posterior
-            ci_iters = 15
-            for i in range(ci_iters):
-                self.update_learner_posterior()
-                self.update_self_teaching_posterior()
+            # run updates for learning and teacher posterior once
+            self.update_learner_posterior()
+            self.update_self_teaching_posterior()
 
             # sample data point from self-teaching
             self_teaching_sample_feature = self.sample_self_teaching_posterior()
             # print(self_teaching_sample_feature)
-            self_teaching_sample_label = self.true_hyp[self_teaching_sample_feature]
+            self_teaching_sample_label = self.true_hyp[
+                self_teaching_sample_feature]
             self.observed_features = np.append(
                 self.observed_features, self_teaching_sample_feature)
             self.observed_labels = np.append(
                 self.observed_labels, self_teaching_sample_label)
 
             # get learner posterior and broadcast
-            updated_learner_posterior = self.learner_posterior[:, self_teaching_sample_feature,
-                                                               self_teaching_sample_label]
+            updated_learner_posterior = \
+                self.learner_posterior[:, self_teaching_sample_feature,
+                                       self_teaching_sample_label]
 
             # check for valid probability distribution
             assert np.isclose(np.sum(updated_learner_posterior), 1.0)
 
             # update new learner posterior by broadcasting
-            self.learner_posterior = np.repeat(updated_learner_posterior, self.n_labels *
-                                               self.n_features).reshape(self.n_hyp,
-                                                                        self.n_features,
-                                                                        self.n_labels)
+            self.learner_posterior = np.repeat(
+                updated_learner_posterior, \
+                self.n_labels * self.n_features).reshape(
+                    self.n_hyp, self.n_features, self.n_labels)
 
             # check if any hypothesis has probability one
             if np.any(updated_learner_posterior == 1.0) and \
@@ -247,6 +213,7 @@ class SelfTeacher:
             self.n_obs += 1
 
             # save posterior probability of true hypothesis
-            self.posterior_true_hyp[self.n_obs] = updated_learner_posterior[self.true_hyp_idx]
+            self.posterior_true_hyp[self.n_obs] = updated_learner_posterior[
+                self.true_hyp_idx]
 
         return self.n_obs, self.posterior_true_hyp, self.first_feature_prob
