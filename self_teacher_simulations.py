@@ -29,7 +29,6 @@ for i in range(n_iters):
     active_learner = ActiveLearner(n_features, hyp_space_type, sampling=sampling)
     active_learner_boundary_obs[i], active_learner_boundary_post[i,
                                                              :], active_learner_prob = active_learner.run()
-print("done")
 
 # plot results
 self_teacher_boundary_post_mean = np.mean(self_teacher_boundary_post, axis=0)
@@ -51,7 +50,7 @@ plt.show()
 
 
 # plot first feature prob
-plt.plot(np.arange(n_features), self_teacher_prob, label = "self teacher")
-plt.plot(np.arange(n_features), active_learner_pro, label = "active learner")
+plt.plot(np.arange(n_features), self_teacher_prob ** 3 / np.sum(self_teacher_prob ** 3), label = "self teacher")
+plt.plot(np.arange(n_features), active_learner_prob, label = "active learner")
 plt.legend()
 plt.show()
