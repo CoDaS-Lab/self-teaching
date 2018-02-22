@@ -114,11 +114,11 @@ class BatchSelfTeacher:
         self_teaching_posterior = self.get_self_teaching_posterior()
 
         # calculate posterior
-        # self.learner_posterior = lik * self_teaching_posterior * \
-        #     self.learner_posterior  # use existing posterior as prior
+        self.learner_posterior = lik * self_teaching_posterior * \
+            self.learner_posterior  # use existing posterior as prior
 
         # new way of calculating posterior w/o teaching posterior
-        self.learner_posterior = lik * self.learner_posterior
+        # self.learner_posterior = lik * self.learner_posterior
         
         # normalize across each hypothesis
         self.learner_posterior = np.nan_to_num(self.learner_posterior /
@@ -308,16 +308,3 @@ class BatchSelfTeacher:
             self_teaching_posterior_sample[i] = np.sum(batch_self_teaching_posterior[idx]) / self.batch_size
             
         return batch_self_teaching_posterior
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
