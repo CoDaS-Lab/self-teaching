@@ -3,7 +3,8 @@ import models.utils as utils
 
 
 class SelfTeacher:
-    def __init__(self, n_features, hyp_space_type, true_hyp=None, sampling="max"):
+    def __init__(self, n_features, hyp_space_type,
+                 true_hyp=None, sampling="max"):
         self.n_features = n_features
         self.n_labels = 2
         self.observed_features = np.array([])
@@ -16,18 +17,12 @@ class SelfTeacher:
         elif hyp_space_type == "line":
             self.hyp_space = utils.create_line_hyp_space(self.n_features)
         self.n_hyp = len(self.hyp_space)
-        self.learner_prior = np.array([[[1 / self.n_hyp
-                                         for _ in range(self.n_labels)]
-                                        for _ in range(self.n_features)]
-                                       for _ in range(self.n_hyp)])
-        self.teacher_prior = np.array([[[1 / self.n_features
-                                         for _ in range(self.n_labels)]
-                                        for _ in range(self.n_features)]
-                                       for _ in range(self.n_hyp)])
-        self.self_teaching_posterior = np.array([[[1 / self.n_hyp
-                                                   for _ in range(self.n_labels)]
-                                                  for _ in range(self.n_features)]
-                                                 for _ in range(self.n_hyp)])
+        self.learner_prior = (1 / self.n_hyp) * \
+            np.ones((self.n_hyp, self.n_features, self.n_labels))
+        self.teacher_prior = (1 / self.n_features) * \
+            np.ones((self.n_hyp, self.n_features, self.n_labels))
+        self.self_teaching_posterior = (1 / self.n_hyp) * \
+            np.ones((self.n_hyp, self.n_features, self.n_labels))
         self.learner_posterior = self.learner_prior
         self.sampling = sampling
 
@@ -37,7 +32,7 @@ class SelfTeacher:
                 np.where([np.all(true_hyp == hyp)
                           for hyp in self.hyp_space])[0]
         else:
-            self.true_hyp_idx = np.random.randint(len(self.hyp_space))
+            self.true_hyp_idx = np.random.randint(self.n_hyp)
             self.true_hyp = self.hyp_space[self.true_hyp_idx]
 
         self.posterior_true_hyp = np.ones(self.n_features + 1)
@@ -64,7 +59,7 @@ class SelfTeacher:
         possible feature/label observations"""
 
         lik = self.likelihood()  # p(y|x, h)
-        self_teaching_posterior = self.get_self_teaching_posterior()
+        # self_teaching_posterior = self.get_self_teaching_posterior()
 
         # # calculate posterior
         # self.learner_posterior = lik * self_teaching_posterior * \
@@ -83,11 +78,8 @@ class SelfTeacher:
 
         # use same code as teacher.py to calculate teaching posterior
         # uniform joint over data, which is broadcasted into correct shape
-        prob_joint_data = np.array([[1 / (self.n_features * self.n_labels)
-                                     for _ in range(self.n_labels)]
-                                    for _ in range(self.n_features)])  # p(x, y)
-
-        prob_joint_data = np.tile(prob_joint_data, (self.n_hyp, 1, 1))
+        prob_joint_data = (1 / self.n_features * self.n_labels) * \
+            np.ones((self.n_hyp, self.n_features, self.n_labels))  # p(x, y)
 
         # multiply with posterior to get overall joint
         # p(h, x, y) = p(h|, x, y) * p(x, y)
