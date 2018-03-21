@@ -1,4 +1,5 @@
 from collections import deque
+import numpy as np
 
 class DirectedGraph:
     def __init__(self, edges, transmission_rate=0.9, background_rate=0.05):
@@ -40,7 +41,8 @@ class DirectedGraph:
         
         # append children of intervened node to queue
         children = self.get_children(node)
-        q.append(children)  # append children of nodes to queue
+        for child in children:
+            q.append(child)  # append children of nodes to queue
         
         while len(q) is not 0:
             curr_node = q.popleft()  # remove first node from queue
