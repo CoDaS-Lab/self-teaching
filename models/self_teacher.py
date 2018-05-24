@@ -126,7 +126,7 @@ class SelfTeacher:
         """Sample a data point based off the self-teaching posterior"""
 
         # get teacher posterior and select a data point
-        self_teaching_posterior = self.get_self_teaching_posterior()
+        self_teaching_posterior = self.self_teaching_posterior
         self_teaching_posterior_sample = self_teaching_posterior[0, :, 0]
 
         # check posterior sample is a valid probability distribution

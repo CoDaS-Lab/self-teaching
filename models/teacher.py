@@ -54,12 +54,6 @@ class Teacher:
                         lik[i, j, k] = 0
         return lik
 
-    def get_learner_posterior(self):
-        return self.learner_posterior
-
-    def get_teacher_posterior(self):
-        return self.teacher_posterior
-
     def set_learner_posterior(self, learner_posterior):
         self.learner_posterior = learner_posterior
 
@@ -71,7 +65,7 @@ class Teacher:
         possible feature/label observations"""
 
         lik = self.likelihood()  # p(y|x, h)
-        teacher_posterior = self.get_teacher_posterior()
+        teacher_posterior = self.teacher_posterior
 
         # calculate posterior and normalize
         self.learner_posterior = lik * teacher_posterior * \
@@ -96,7 +90,7 @@ class Teacher:
 
         # multiply with posterior to get overall joint
         # p(h, x, y) = p(h|, x, y) * p(x, y)
-        learner_posterior = self.get_learner_posterior()
+        learner_posterior = self.learner_posterior
         prob_joint = learner_posterior * prob_joint_data
 
         # marginalize over y, i.e. p(h, x), and broadcast result
@@ -118,7 +112,7 @@ class Teacher:
         """Randomly samples a data point based off the teacher's posterior"""
 
         # get teacher likelihood and select data point
-        teacher_posterior = self.get_teacher_posterior()
+        teacher_posterior = self.teacher_posterior
         teacher_posterior_true_hyp = teacher_posterior[self.true_hyp_idx, :, 0]
 
         # set probability of selecting observed features to be zero
