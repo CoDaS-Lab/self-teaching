@@ -1,5 +1,5 @@
 import numpy as np
-from models.dag import DirectedGraph
+from dag import DirectedGraph
 
 def create_line_hyp_space(n_features):
     """Creates a hypothesis space of concepts defined by 1D lines"""

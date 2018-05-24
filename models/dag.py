@@ -5,8 +5,14 @@ class DirectedGraph:
     def __init__(self, edges, transmission_rate=0.9, background_rate=0.05):
         self.adjacency_matrix = edges
         self.n = self.adjacency_matrix.shape[0]
+        self.n_actions = self.n
+        self.n_observations = 2 ** self.n
         self.transmission_rate = transmission_rate
         self.background_rate = background_rate
+        self.observations = np.array([[0, 0, 0], [0, 0, 1],
+                                      [0, 1, 0], [0, 1, 1],
+                                      [1, 0, 0], [1, 0, 1],
+                                      [1, 1, 0], [1, 1, 1]])
         
         assert self.n >= 0
         assert self.transmission_rate >= 0.0
@@ -62,13 +68,32 @@ class DirectedGraph:
 
         # set any outcomes greater than 1 to 1
         outcomes[outcomes > 1.0] = 1.0
-        
+
         return outcomes
         
     def likelihood(self):
         """Calculate the likelihood of a node being turned on?"""
-        lik = np.zeros((self.n, self.n))
+        outcomes = np.zeros((self.n, self.n))
         for i in range(self.n):
-            lik[i] = self.intervene(i)
-            
+            outcomes[i] = self.intervene(i)
+
+        # use outcomes matrix to determine likelihood
+        lik = np.zeros((self.n_observations, self.n_actions))
+        for i in range(self.n_observations):
+            for j in range(self.n_actions):
+                observation = self.observations[i]
+                outcome = outcomes[j]
+                new_outcome = np.zeros_like(outcome)
+
+                for k, o in enumerate(observation):
+                    if np.isclose(o, 0):
+                        new_outcome[k] = 1 - outcome[k]
+                    else:
+                        new_outcome[k] = outcome[k]
+
+                lik[i, j] = np.prod(new_outcome)
+
+        # check likelihoods for each action sum to 1
+        np.all(np.sum(lik, axis=0) == 1)        
+                
         return lik
