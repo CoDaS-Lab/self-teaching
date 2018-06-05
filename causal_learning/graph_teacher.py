@@ -53,13 +53,14 @@ class GraphTeacher:
         """Calculates the posterior over all possible action/outcome pairs
         for each graph"""
 
-        if self.teacher_posterior.shape == (self.n_hyp, self.n_actions ** 2):
-            # reshape to add dimension across observations
-            self.teacher_posterior = np.repeat(
-                self.teacher_posterior[:, np.newaxis, :],
-                self.n_observations, axis=1)
+        # TODO: uncomment later to use cooperative inference
+        # if self.teacher_posterior.shape == (self.n_hyp, self.n_actions ** 2):
+        #     # reshape to add dimension across observations
+        #     self.teacher_posterior = np.repeat(
+        #         self.teacher_posterior[:, np.newaxis, :],
+        #         self.n_observations, axis=1)
 
-        post = self.teacher_posterior * self.likelihood()
+        post = self.learner_posterior * self.likelihood()
         self.learner_posterior = np.nan_to_num(post / np.sum(post, axis=0))
 
     def update_teacher_posterior(self):
@@ -75,9 +76,66 @@ class GraphTeacher:
                                   (np.sum(joint_actions, axis=1)).T).T
 
     def run_cooperative_inference(self, n_iters=1):
+        """Run cooperative inference for n_iters"""
         for i in range(n_iters):
             self.update_learner_posterior()
             self.update_teacher_posterior()
+
+    def combine_actions(self, action_posterior):
+        """Combine posterior of pairs of actions that are the same"""
+        new_action_post = [action_posterior[0],
+                           action_posterior[1] + action_posterior[3],
+                           action_posterior[2] + action_posterior[6],
+                           action_posterior[4],
+                           action_posterior[5] + action_posterior[7],
+                           action_posterior[8]]
+        return new_action_post
+
+    def marginalize_learner_posterior(self):
+        """Marginalizes out observations in the learner's posterior"""
+
+    def plot_learner_posterior_by_actions(self):
+        """Visualize the marginalized learner posterior distribution over actions"""
+        self.action_learner_posterior = np.sum(self.learner_posterior, axis=1)
+
+        # assert np.allclose(np.sum(graph_teacher.action_learner_posterior, axis=0), 1.0)
+
+        actions = ['11', '12', '13', '21', '22', '23', '31', '23', '33']
+        hypotheses = ['CC1', 'CC2', 'CC3', 'CE1', 'CE2', 'CE3',
+                      'CH1', 'CH2', 'CH3', 'CH4', 'CH5', 'CH6']
+        ind = np.arange(len(hypotheses))
+        
+        plt.figure()
+
+        for i in range(len(actions)):
+            plt.subplot(3, 3, i+1)
+            plt.bar(ind, self.action_learner_posterior[:, i])
+            plt.xticks(ind, hypotheses)
+            plt.title(actions[i])
+
+        plt.tight_layout()
+        plt.show()
+
+    def plot_learner_posterior_by_hypotheses(self):
+        """Visualize the marginalized learner posterior distribution over hypotheses"""
+        self.hyp_learner_posterior = np.sum(self.learner_posterior, axis=1)
+
+        # assert np.allclose(np.sum(graph_teacher.hyp_learner_posterior, axis=1), 1.0)
+
+        actions = ['11', '12', '13', '22', '23', '33']
+        hypotheses = ['CC1', 'CC2', 'CC3', 'CE1', 'CE2', 'CE3',
+                      'CH1', 'CH2', 'CH3', 'CH4', 'CH5', 'CH6']
+        ind = np.arange(len(actions))
+
+        plt.figure()
+
+        for i in range(len(hypotheses)):
+            plt.subplot(4, 3, i+1)
+            plt.bar(ind, self.combine_actions(self.hyp_learner_posterior[i]))
+            plt.xticks(ind, actions)
+            plt.title(hypotheses[i])
+
+        plt.show()
 
 
 # run cooperative inference to teach graphs
@@ -85,33 +143,4 @@ graphs = create_graph_hyp_space(transmission_rate=0.9, background_rate=0.05)
 graph_teacher = GraphTeacher(graphs)
 graph_teacher.run_cooperative_inference()
 
-# extract posterior for each canonical type of graph
-bar = graph_teacher.teacher_posterior[0]
-common_cause = [bar[0], bar[1] + bar[3], bar[2] + bar[6], bar[4], bar[5] + bar[7], bar[8]]
-
-bar = graph_teacher.teacher_posterior[3]
-common_effect = [bar[0], bar[1] + bar[3], bar[2] + bar[6], bar[4], bar[5] + bar[7], bar[8]]
-
-bar = graph_teacher.teacher_posterior[6]
-causal_chain = [bar[0], bar[1] + bar[3], bar[2] + bar[6], bar[4], bar[5] + bar[7], bar[8]]
-
-# plot results
-actions = ['11', '12', '13', '22', '23', '33']
-ind = np.arange(len(actions))
-
-plt.figure()
-plt.subplot(131)
-plt.bar(ind, common_effect)
-plt.xticks(ind, actions)
-plt.title("Common effect")
-
-plt.subplot(132)
-plt.bar(ind, causal_chain)
-plt.xticks(ind, actions)
-plt.title("Causal chain")
-
-plt.subplot(133)
-plt.bar(ind, common_cause)
-plt.xticks(ind, actions)
-plt.title("Common cause")
-plt.show()
+graph_teacher.plot_learner_posterior_by_actions()
