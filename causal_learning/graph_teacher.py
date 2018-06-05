@@ -60,6 +60,7 @@ class GraphTeacher:
         #         self.teacher_posterior[:, np.newaxis, :],
         #         self.n_observations, axis=1)
 
+        # p(g|a, o) = p(o, a|g) * p(g)
         post = self.learner_posterior * self.likelihood()
         self.learner_posterior = np.nan_to_num(post / np.sum(post, axis=0))
 
@@ -68,10 +69,15 @@ class GraphTeacher:
         joint_action_obs = 1 / (self.n_actions ** 2 * self.n_observations) * \
             np.ones((self.n_hyp,
                      self.n_observations,
-                     self.n_actions ** 2))
+                     self.n_actions ** 2))  # p(a, o)
 
+        # p(g, a, o) = p(g|a, o) * p(a, o)
         joint_all = self.learner_posterior * joint_action_obs
+
+        # p(g, a) = \sum_o p(g, a, o)
         joint_actions = np.sum(joint_all, axis=1)
+
+        # p(a|g) = p(g, a) / p(g) = p(g, a) / \sum_a p(g, a)
         self.teacher_posterior = (joint_actions.T /
                                   (np.sum(joint_actions, axis=1)).T).T
 
