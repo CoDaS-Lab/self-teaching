@@ -1,5 +1,5 @@
 import numpy as np
-from dag import DirectedGraph
+from causal_learning.dag import DirectedGraph
 
 
 def create_graph_hyp_space(transmission_rate=0.9, background_rate=0.05):

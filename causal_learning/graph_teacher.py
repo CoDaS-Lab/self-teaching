@@ -1,13 +1,18 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from utils import create_graph_hyp_space
+from causal_learning.utils import create_graph_hyp_space
 
 
 class GraphTeacher:
     def __init__(self, graphs):
         self.n_hyp = len(graphs)
-        self.n_actions = 3
-        self.n_observations = 8
+        self.actions = np.array([1, 2, 3])
+        self.n_actions = len(self.actions)
+        self.observations = np.array([[0, 0, 0], [0, 0, 1],
+                                      [0, 1, 0], [0, 1, 1],
+                                      [1, 0, 0], [1, 0, 1],
+                                      [1, 1, 0], [1, 1, 1]])
+        self.n_observations = len(self.observations)
         self.hyp = graphs
 
         # prior over graphs
