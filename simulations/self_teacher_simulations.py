@@ -1,9 +1,9 @@
+import sys
+sys.path.insert(0, '../')
 import numpy as np
 import matplotlib.pyplot as plt
-
-from models.self_teacher import SelfTeacher
-from models.active_learner import ActiveLearner
-
+from concept_learning.self_teacher import SelfTeacher
+from concept_learning.active_learner import ActiveLearner
 import warnings
 warnings.filterwarnings('ignore')
 

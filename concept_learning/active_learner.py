@@ -1,5 +1,5 @@
 import numpy as np
-import models.utils as utils
+import concept_learning.utils as utils
 
 
 class ActiveLearner:
