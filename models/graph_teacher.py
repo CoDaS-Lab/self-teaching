@@ -15,10 +15,11 @@ class GraphTeacher:
                                                        self.n_observations,
                                                        self.n_actions ** 2))
         # prior over teaching actions
-        self.teacher_prior = (1 / self.n_actions ** 2) * np.ones((self.n_hyp,
-                                                                  self.n_observations,
-                                                                  self.n_actions ** 2))
-        
+        self.teacher_prior = (1 / self.n_actions ** 2) * \
+            np.ones((self.n_hyp,
+                     self.n_observations,
+                     self.n_actions ** 2))
+
         self.learner_posterior = self.learner_prior
         self.teacher_posterior = 1 / self.n_hyp * np.ones((self.n_hyp,
                                                            self.n_observations,
