@@ -77,6 +77,30 @@ graphs = create_graph_hyp_space()
 graph_teacher = GraphTeacher(graphs)
 graph_teacher.run_cooperative_inference()
 bar = graph_teacher.teacher_posterior[0]
-new_bar = [bar[0], bar[1] + bar[3], bar[2] + bar[6], bar[4], bar[5] + bar[7], bar[8]]
-plt.bar(['11', '12', '13', '22', '23', '33'], new_bar)
+common_cause = [bar[0], bar[1] + bar[3], bar[2] + bar[6], bar[4], bar[5] + bar[7], bar[8]]
+
+bar = graph_teacher.teacher_posterior[3]
+common_effect = [bar[0], bar[1] + bar[3], bar[2] + bar[6], bar[4], bar[5] + bar[7], bar[8]]
+
+bar = graph_teacher.teacher_posterior[6]
+causal_chain = [bar[0], bar[1] + bar[3], bar[2] + bar[6], bar[4], bar[5] + bar[7], bar[8]]
+
+actions = ['11', '12', '13', '22', '23', '33']
+ind = np.arange(len(actions))
+
+plt.figure()
+plt.subplot(131)
+plt.bar(ind, common_effect)
+plt.xticks(ind, actions)
+plt.title("Common effect")
+
+plt.subplot(132)
+plt.bar(ind, causal_chain)
+plt.xticks(ind, actions)
+plt.title("Causal chain")
+
+plt.subplot(133)
+plt.bar(ind, common_cause)
+plt.xticks(ind, actions)
+plt.title("Common cause")
 plt.show()
