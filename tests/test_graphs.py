@@ -1,6 +1,7 @@
 import pytest
 import numpy as np
-from models.dag import DirectedGraph
+from causal_learning.dag import DirectedGraph
+
 
 def test_get_parents():
     common_cause = np.array([[0, 1, 1], [0, 0, 0], [0, 0, 0]])
@@ -24,6 +25,7 @@ def test_get_parents():
     assert np.array_equal(dag_three.get_parents(1), np.array([0]))
     assert np.array_equal(dag_three.get_parents(2), np.array([1]))
 
+
 def test_get_children():
     common_cause = np.array([[0, 1, 1], [0, 0, 0], [0, 0, 0]])
     dag_one = DirectedGraph(common_cause)
@@ -46,6 +48,36 @@ def test_get_children():
     assert np.array_equal(dag_three.get_children(1), np.array([2]))
     assert np.array_equal(dag_three.get_children(2), np.array([]))
 
+
+def calculate_likelihood(outcomes):
+    # use outcomes matrix to determine likelihood
+    observations = np.array([[0, 0, 0], [0, 0, 1],
+                             [0, 1, 0], [0, 1, 1],
+                             [1, 0, 0], [1, 0, 1],
+                             [1, 1, 0], [1, 1, 1]])
+    n_observations = 8
+    n_actions = 3
+    lik = np.zeros((n_observations, n_actions))
+
+    for i in range(n_observations):
+        for j in range(n_actions):
+            observation = observations[i]
+            outcome = outcomes[j]
+            new_outcome = np.zeros_like(outcome)
+
+            for k, o in enumerate(observation):
+                if np.isclose(o, 0):
+                    new_outcome[k] = 1 - outcome[k]
+                else:
+                    new_outcome[k] = outcome[k]
+
+            lik[i, j] = np.prod(new_outcome)
+
+    # check likelihoods for each action sum to 1
+    np.all(np.sum(lik, axis=0) == 1)
+    return lik
+
+
 def test_likelihood():
     t = 0.9  # transmission rate
     b = 0.05  # background rate
@@ -55,28 +87,34 @@ def test_likelihood():
                             background_rate=b)
 
     # analytical likelihood
-    likelihood_dag_one = np.array([[1.0, t+b, t+b],
-                             [b, 1.0, t*b + b],
-                             [b, t*b + b, 1.0]])
+    outcomes_dag_one = np.array([[1.0, t+b, t+b],
+                                 [b, 1.0, t*b + b],
+                                 [b, t*b + b, 1.0]])
+
+    likelihood_dag_one = calculate_likelihood(outcomes_dag_one)
+
     assert np.array_equal(dag_one.likelihood(), likelihood_dag_one)
 
     common_effect = np.array([[0, 0, 1], [0, 0, 1], [0, 0, 0]])
     dag_two = DirectedGraph(common_effect, transmission_rate=t,
                             background_rate=b)
 
-    likelihood_dag_two = np.array([[1.0, b, t + t*b + b],
-                                   [b, 1.0, t + t*b + b],
-                                   [b, b, 1.0]])
+    outcomes_dag_two = np.array([[1.0, b, t + t*b + b],
+                                 [b, 1.0, t + t*b + b],
+                                 [b, b, 1.0]])
+
+    likelihood_dag_two = calculate_likelihood(outcomes_dag_two)
 
     assert np.array_equal(dag_two.likelihood(), likelihood_dag_two)
 
     causal_chain = np.array([[0, 1, 0], [0, 0, 1], [0, 0, 0]])
     dag_three = DirectedGraph(causal_chain, transmission_rate=t,
-                            background_rate=b)
+                              background_rate=b)
 
-    likelihood_dag_three = np.array([[1.0, t+b, t*(t+b) + b],
-                                     [b, 1.0, t+b],
-                                     [b, t*b + b, 1.0]])
+    outcomes_dag_three = np.array([[1.0, t+b, t*(t+b) + b],
+                                   [b, 1.0, t+b],
+                                   [b, t*b + b, 1.0]])
+
+    likelihood_dag_three = calculate_likelihood(outcomes_dag_three)
 
     assert np.array_equal(dag_three.likelihood(), likelihood_dag_three)
-    

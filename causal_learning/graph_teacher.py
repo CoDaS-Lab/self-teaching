@@ -48,8 +48,8 @@ class GraphTeacher:
         """Calculates the posterior over all possible action/outcome pairs
         for each graph"""
 
-        if self.teacher_posterior.shape == (12, 9):
-            # reshape
+        if self.teacher_posterior.shape == (self.n_hyp, self.n_actions ** 2):
+            # reshape to add dimension across observations
             self.teacher_posterior = np.repeat(
                 self.teacher_posterior[:, np.newaxis, :],
                 self.n_observations, axis=1)
