@@ -51,16 +51,12 @@ class GraphTeacher:
         """Calculates the posterior over all possible action/outcome pairs
         for each graph"""
 
-        # TODO: uncomment later to use cooperative inference
-        # if self.teacher_posterior.shape == (self.n_hyp, self.n_actions ** 2):
-        #     # reshape to add dimension across observations
-        #     self.teacher_posterior = np.repeat(
-        #         self.teacher_posterior[:, np.newaxis, :],
-        #         self.n_observations, axis=1)
-
         # p(g|a, o) = p(o, a|g) * p(g)
-        post = self.learner_posterior * self.likelihood()
+        post = self.likelihood() * self.teacher_posterior * self.learner_posterior
         self.learner_posterior = np.nan_to_num(post / np.sum(post, axis=0))
+
+        # check that learner's posterior is a valid distribution
+        # TODO: figure out how to check that a numpy array has both 0s and 1s
 
     def update_teacher_posterior(self):
         """Calculates the posterior of selecting which actions to take"""
@@ -78,6 +74,14 @@ class GraphTeacher:
         # p(a|g) = p(g, a) / p(g) = p(g, a) / \sum_a p(g, a)
         self.teacher_posterior = (joint_actions.T /
                                   (np.sum(joint_actions, axis=1)).T).T
+
+        # expand teacher's posterior to add observation dimension back in
+        self.teacher_posterior = np.repeat(
+            self.teacher_posterior[:, np.newaxis, :],
+            self.n_observations, axis=1)
+
+        # check that teacher's posterior is a valid distribution over actions
+        assert np.allclose(np.sum(self.teacher_posterior, axis=2), 1.0)
 
     def run_cooperative_inference(self, n_iters=1):
         """Run cooperative inference for n_iters"""
@@ -102,13 +106,11 @@ class GraphTeacher:
         """Visualize the marginalized learner posterior distribution over actions"""
         self.action_learner_posterior = np.sum(self.learner_posterior, axis=1)
 
-        # assert np.allclose(np.sum(graph_teacher.action_learner_posterior, axis=0), 1.0)
-
         actions = ['11', '12', '13', '21', '22', '23', '31', '23', '33']
         hypotheses = ['CC1', 'CC2', 'CC3', 'CE1', 'CE2', 'CE3',
                       'CH1', 'CH2', 'CH3', 'CH4', 'CH5', 'CH6']
         ind = np.arange(len(hypotheses))
-        
+
         plt.figure()
 
         for i in range(len(actions)):
@@ -123,8 +125,6 @@ class GraphTeacher:
     def plot_learner_posterior_by_hypotheses(self):
         """Visualize the marginalized learner posterior distribution over hypotheses"""
         self.hyp_learner_posterior = np.sum(self.learner_posterior, axis=1)
-
-        # assert np.allclose(np.sum(graph_teacher.hyp_learner_posterior, axis=1), 1.0)
 
         actions = ['11', '12', '13', '22', '23', '33']
         hypotheses = ['CC1', 'CC2', 'CC3', 'CE1', 'CE2', 'CE3',
