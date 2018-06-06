@@ -25,11 +25,9 @@ class GraphTeacher:
                      self.n_observations,
                      self.n_actions ** 2))
 
+        # initialize posteriors to be over the priors
         self.learner_posterior = self.learner_prior
-        self.teacher_posterior = (1 / self.n_actions ** 2) * \
-            np.ones((self.n_hyp,
-                     self.n_observations,
-                     self.n_actions ** 2))
+        self.teacher_posterior = self.teacher_prior
 
     def likelihood(self):
         """Returns the likelihood of each action/outcome pair for each graph"""
