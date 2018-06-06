@@ -141,10 +141,46 @@ class GraphTeacher:
 
         plt.show()
 
+    def plot_teacher_posterior(self):
+        """Visualize the teaching posterior over the three possible kinds of causal graphs"""
+
+        # marginalize over observations and normalize
+        marg_teaching_posterior = np.sum(self.teacher_posterior, axis=1)
+        marg_teaching_posterior = (marg_teaching_posterior.T /
+                                   np.sum(marg_teaching_posterior, axis=1).T).T
+
+        # get three canonical causal graphs
+        common_cause = self.combine_actions(marg_teaching_posterior[0])
+        common_effect = self.combine_actions(marg_teaching_posterior[3])
+        causal_chain = self.combine_actions(marg_teaching_posterior[6])
+
+        # make figures
+        actions = ['11', '12', '13', '22', '23', '33']
+        ind = np.arange(len(actions))
+
+        plt.figure()
+
+        plt.subplot(1, 3, 1)
+        plt.bar(ind, common_effect)
+        plt.xticks(ind, actions)
+        plt.title("Common effect")
+
+        plt.subplot(1, 3, 2)
+        plt.bar(ind, causal_chain)
+        plt.xticks(ind, actions)
+        plt.title("Causal chain")
+
+        plt.subplot(1, 3, 3)
+        plt.bar(ind, common_cause)
+        plt.xticks(ind, actions)
+        plt.title("Common cause")
+
+        plt.tight_layout()
+        plt.show()
+
 
 # run cooperative inference to teach graphs
 graphs = create_graph_hyp_space(transmission_rate=0.9, background_rate=0.05)
 graph_teacher = GraphTeacher(graphs)
-graph_teacher.run_cooperative_inference()
-
-graph_teacher.plot_learner_posterior_by_actions()
+graph_teacher.run_cooperative_inference(n_iters=100)
+graph_teacher.plot_teacher_posterior()
