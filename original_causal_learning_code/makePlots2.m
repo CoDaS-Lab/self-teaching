@@ -1,6 +1,6 @@
 function makePlots()
 
-load causalPreds2
+load newCausalPreds2
 
 % make teaching plots
 % compute probabilities for each pair of choices
@@ -47,5 +47,5 @@ for h = 1 : length(teach)
     q = axis; q(4) = .5; q(1:2) = [0 7];
     axis(q); box off;
     set(gca, 'ytick', 0:.2:.5,'fontsize', 20);
-    print('-depsc', ['figure_teaching',num2str(h)]);
+    print('-depsc', ['new_figure_teaching',num2str(h)]);
 end

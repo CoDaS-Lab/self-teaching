@@ -74,7 +74,7 @@ for i = 1 : 3
     post2{i} = normalize(like2{i} .* pDgHI.* repmat(prior2{i}, size(examples,1), 1),2);
 end
 
-save causalPreds2 likelihoods posterior examples bnet concepts like2 post2 prior2 prior
+save newCausalPreds2.mat likelihoods posterior examples bnet concepts like2 post2 prior2 prior
 
 % % NOTE: the following is for calculating order effects
 % % if want computation for more than one example, must now choose which
