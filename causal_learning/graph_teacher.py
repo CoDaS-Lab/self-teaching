@@ -72,7 +72,7 @@ class GraphTeacher:
         teacher_posterior = new[self.interventions]
 
         # run cooperative inference
-        teacher_posterior = self.compute_likelihood(
+        teacher_posterior = self.cooperative_inference(
             teacher_posterior, self.learner_prior)
 
         return teacher_posterior
@@ -95,10 +95,10 @@ class GraphTeacher:
 
             self.sequential_teacher_posterior[i] = self.update_teacher_posterior(
                 self.sequential_prior[i])
-            self.sequential_teacher_posterior[i] = self.compute_likelihood(
+            self.sequential_teacher_posterior[i] = self.cooperative_inference(
                 self.sequential_teacher_posterior[i], self.sequential_prior[i])
 
-    def compute_likelihood(self, teacher_posterior, prior):
+    def cooperative_inference(self, teacher_posterior, prior):
         """Run cooperative inference"""
 
         crit = 0.00001
@@ -204,6 +204,7 @@ if __name__ == "__main__":
     # run cooperative inference to teach graphs
     graphs = create_graph_hyp_space(t=0.8, b=0.01)
     graph_teacher = GraphTeacher(graphs)
+
     graph_teacher.likelihood()
     graph_teacher.update_teacher_posterior(graph_teacher.learner_prior)
     graph_teacher.update_learner_posterior()
