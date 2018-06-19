@@ -28,7 +28,7 @@ class GraphTeacher:
         self.learner_prior = 1 / self.n_hyp * \
             np.ones((self.n_hyp, self.n_observations))
 
-        # prior over teaching actions
+        # prior over teacher actions
         self.teacher_prior = (1 / self.n_actions) * \
             np.ones((self.n_hyp, self.n_observations))
 
@@ -47,9 +47,9 @@ class GraphTeacher:
 
         assert np.isclose(np.sum(self.lik), 36.0)
 
-    def update_teaching_posterior(self, prior):
+    def update_teacher_posterior(self, prior):
         """Calculates p(i|h)"""
-        self.teacher_posterior = np.zeros((self.n_hyp, self.n_observations))
+        teacher_posterior = np.zeros((self.n_hyp, self.n_observations))
 
         for i in range(self.n_interventions):
             denom = np.sum(self.lik[self.interventions == i] *
@@ -60,28 +60,31 @@ class GraphTeacher:
 
             tmp = np.sum(tmp, axis=0)
             tmp = tmp / np.sum(tmp)
-            self.teacher_posterior[self.interventions == i, :] = np.tile(
+            teacher_posterior[self.interventions == i, :] = np.tile(
                 tmp, (np.sum(self.interventions == i), 1))
 
         # normalize
-        new = self.teacher_posterior[self.unique_interventions] / \
-            np.sum(self.teacher_posterior[self.unique_interventions], axis=0)
+        new = teacher_posterior[self.unique_interventions] / \
+            np.sum(teacher_posterior[self.unique_interventions], axis=0)
 
         assert np.isclose(np.sum(new), 12.0)
 
-        self.teacher_posterior = new[self.interventions]
+        teacher_posterior = new[self.interventions]
 
         # run cooperative inference
-        self.teacher_posterior = self.compute_likelihood(self.learner_prior)
+        teacher_posterior = self.compute_likelihood(
+            teacher_posterior, self.learner_prior)
 
-    def update_sequential_teaching_posterior(self):
+        return teacher_posterior
+
+    def update_sequential_teacher_posterior(self):
         # calculate updated prior
         self.sequential_prior = np.zeros((self.n_interventions,
                                           self.n_hyp,
                                           self.n_observations))
-        self.sequential_teaching_posterior = np.zeros((self.n_interventions,
-                                                       self.n_hyp,
-                                                       self.n_observations))
+        self.sequential_teacher_posterior = np.zeros((self.n_interventions,
+                                                      self.n_hyp,
+                                                      self.n_observations))
 
         for i in range(self.n_interventions):
             prior_two = np.sum(
@@ -90,16 +93,17 @@ class GraphTeacher:
             self.sequential_prior[i] = np.tile(
                 prior_two, (self.n_observations, 1))
 
-            self.update_teaching_posterior(self.sequential_prior[i])
-            self.sequential_teaching_posterior[i] = self.compute_likelihood(
+            self.sequential_teacher_posterior[i] = self.update_teacher_posterior(
                 self.sequential_prior[i])
+            self.sequential_teacher_posterior[i] = self.compute_likelihood(
+                self.sequential_teacher_posterior[i], self.sequential_prior[i])
 
-    def compute_likelihood(self, prior):
+    def compute_likelihood(self, teacher_posterior, prior):
         """Run cooperative inference"""
 
         crit = 0.00001
-        teacher_posterior_prev = np.zeros_like(self.teacher_posterior)
-        teacher_posterior = self.teacher_posterior.copy()
+        teacher_posterior_prev = np.zeros_like(teacher_posterior)
+        teacher_posterior = teacher_posterior.copy()
 
         while np.sum(np.absolute(teacher_posterior - teacher_posterior_prev)) > crit:
             teacher_posterior_prev = teacher_posterior.copy()
@@ -130,6 +134,8 @@ class GraphTeacher:
         return teacher_posterior
 
     def update_learner_posterior(self):
+        self.teacher_posterior = self.update_teacher_posterior(
+            self.learner_prior)
         posterior = self.lik * self.teacher_posterior * self.learner_prior
         self.learner_posterior = (posterior.T / np.sum(posterior, axis=1)).T
         assert np.allclose(np.sum(self.learner_posterior, axis=1), 1.0)
@@ -148,7 +154,7 @@ class GraphTeacher:
         return teach
 
     def plot_teacher_likelihood(self, teach):
-        """Visualize the teaching posterior over the three possible kinds of causal graphs"""
+        """Visualize the teacher posterior over the three possible kinds of causal graphs"""
         common_cause = [teach[0][0, 0],
                         teach[0][0, 1] + teach[0][1, 0],
                         teach[0][0, 2] + teach[0][2, 0],
@@ -199,11 +205,10 @@ if __name__ == "__main__":
     graphs = create_graph_hyp_space(t=0.8, b=0.01)
     graph_teacher = GraphTeacher(graphs)
     graph_teacher.likelihood()
-    graph_teacher.update_teaching_posterior(graph_teacher.learner_prior)
-    lik = graph_teacher.teacher_posterior
+    graph_teacher.update_teacher_posterior(graph_teacher.learner_prior)
     graph_teacher.update_learner_posterior()
-    graph_teacher.update_sequential_teaching_posterior()
+    graph_teacher.update_sequential_teacher_posterior()
     teach = graph_teacher.teacher_likelihood(
-        lik, graph_teacher.sequential_teaching_posterior)
+        graph_teacher.teacher_posterior, graph_teacher.sequential_teacher_posterior)
     print(teach)
     # graph_teacher.plot_teacher_likelihood(teach)
