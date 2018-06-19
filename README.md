@@ -2,12 +2,12 @@
 
 ## Directory structure
 
-`causal_learning`: Contains the different models for the causal graph task
-`concept_learning`: Contains the different models for the concept learning task
-`notebooks`: Contains various jupyter notebooks with worked examples
-`original_causal_learning_code`: Matlab code of Pat's original pedagogical sampling model for the causal graph task
-`simulations`: Code to run simulations (currently only self-teaching for the concept learning task)
-`tests`: Directory for test code
+- `causal_learning`: Contains the different models for the causal graph task
+- `concept_learning`: Contains the different models for the concept learning task
+- `notebooks`: Contains various jupyter notebooks with worked examples
+- `original_causal_learning_code`: Matlab code of Pat's original pedagogical sampling model for the causal graph task
+- `simulations`: Code to run simulations (currently only self-teaching for the concept learning task)
+- `tests`: Directory for test code
 
 ## Running the code
 
