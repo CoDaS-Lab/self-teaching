@@ -3,13 +3,16 @@ import numpy as np
 
 
 class DirectedGraph:
-    def __init__(self, edges, transmission_rate=0.9, background_rate=0.05):
+    def __init__(self, edges, likelihood, transmission_rate=0.9, background_rate=0.05):
         self.adjacency_matrix = edges
         self.n = self.adjacency_matrix.shape[0]
         self.n_actions = self.n
         self.n_observations = 2 ** self.n
         self.transmission_rate = transmission_rate
         self.background_rate = background_rate
+        self.likelihood = likelihood
+
+        # TODO: change observations
         self.observations = np.array([[0, 0, 0], [0, 0, 1],
                                       [0, 1, 0], [0, 1, 1],
                                       [1, 0, 0], [1, 0, 1],
@@ -96,5 +99,12 @@ class DirectedGraph:
 
         # check likelihoods for each action sum to 1
         np.all(np.sum(lik, axis=0) == 1)
+
+        # flatten likelihood into a single dimension
+        lik = np.array([
+            lik[4, 0], lik[5, 0], lik[6, 0], lik[7, 0],
+            lik[2, 1], lik[3, 1], lik[1, 2], lik[3, 2],
+            lik[6, 1], lik[7, 1], lik[5, 2], lik[7, 2]
+        ])
 
         return lik
