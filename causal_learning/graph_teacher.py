@@ -1,6 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from causal_learning.utils import create_graph_hyp_space
+# from utils import create_graph_hyp_space
 
 
 class GraphTeacher:
@@ -8,22 +8,26 @@ class GraphTeacher:
         self.n_hyp = len(graphs)
         self.actions = np.array([1, 2, 3])
         self.n_actions = len(self.actions)
-        self.observations = np.array([[0, 0, 0], [0, 0, 1],
-                                      [0, 1, 0], [0, 1, 1],
-                                      [1, 0, 0], [1, 0, 1],
-                                      [1, 1, 0], [1, 1, 1]])
+        self.observations = np.array([[0, 1, 1], [0, 1, 2],
+                                      [0, 2, 1], [0, 2, 2],
+                                      [1, 0, 1], [1, 0, 2],
+                                      [1, 1, 0], [1, 2, 0],
+                                      [2, 0, 1], [2, 0, 2],
+                                      [2, 1, 0], [2, 2, 0]])
         self.n_observations = len(self.observations)
+        self.interventions = np.array([0, 0, 0, 0,
+                                       1, 1, 2, 2,
+                                       1, 1, 2, 2])
+        self.n_interventions = len(np.unique(self.interventions))
         self.hyp = graphs
 
         # prior over graphs
         self.learner_prior = 1 / self.n_hyp * np.ones((self.n_hyp,
-                                                       self.n_observations,
-                                                       self.n_actions ** 2))
+                                                       self.n_observations))
         # prior over teaching actions
-        self.teacher_prior = (1 / self.n_actions ** 2) * \
+        self.teacher_prior = (1 / self.n_actions) * \
             np.ones((self.n_hyp,
-                     self.n_observations,
-                     self.n_actions ** 2))
+                     self.n_observations))
 
         # initialize posteriors to be over the priors
         self.learner_posterior = self.learner_prior
@@ -33,37 +37,115 @@ class GraphTeacher:
         """Returns the likelihood of each action/outcome pair for each graph"""
 
         full_lik = np.empty((self.n_hyp,
-                             self.n_observations,
-                             self.n_actions ** 2))
+                             self.n_observations))
 
         for i, h in enumerate(self.hyp):
-            lik = h.likelihood()
+            lik = h.likelihood
 
-            l = 0
-            for j in range(self.n_actions):
-                for k in range(self.n_actions):
-                    full_lik[i, :, l] = lik[:, j] * lik[:, k]
-                    l += 1
+            full_lik[:, i] = lik
 
-        return full_lik
+        self.lik = full_lik
+
+    def marginal_likelihood(self, prior):
+        self.M = np.zeros((self.n_hyp, self.n_observations))
+        interventions = [[0, 1, 2, 3], [4, 5, 8, 9], [6, 7, 10, 11]]
+
+        for intervention in interventions:
+            denom = np.sum(self.lik[intervention] *
+                           prior[intervention], axis=1)
+
+            # TODO: deal with zeros
+
+            tmp = ((self.lik[intervention] *
+                    prior[intervention]).T / denom).T
+
+            tmp = np.sum(tmp, axis=0)
+            tmp = tmp / np.sum(tmp)
+            self.M[intervention, :] = np.tile(tmp, (len(intervention), 1))
+
+        uniqueInt = [3, 9, 11]
+        new = self.M[uniqueInt] / np.sum(self.M[uniqueInt], axis=0)
+        self.M = new[[0, 0, 0, 0, 1, 1, 2, 2, 1, 1, 2, 2]]
+
+    def sequential_likelihood(self):
+        # calculate updated prior
+        self.sequential_prior = np.zeros((self.n_interventions,
+                                          self.n_hyp,
+                                          self.n_observations))
+        self.sequential_likelihood = np.zeros((self.n_interventions,
+                                               self.n_hyp,
+                                               self.n_observations))
+
+        for i in range(self.n_interventions):
+            prior_two = np.sum(
+                self.learner_posterior[self.interventions == i], axis=0)
+            prior_two = prior_two / np.sum(prior_two)
+            self.sequential_prior[i] = np.tile(
+                prior_two, (self.n_observations, 1))
+
+            self.marginal_likelihood(self.sequential_prior[i])
+            self.sequential_likelihood[i] = graph_teacher.compute_likelihood(
+                self.sequential_prior[i])
+
+    def compute_likelihood(self, prior):
+        """Run cooperative inference"""
+
+        crit = 0.00001
+        M1 = np.zeros_like(self.M)
+        M = self.M.copy()
+
+        while np.sum(np.absolute(M - M1)) > crit:
+            M1 = M.copy()
+            M = self.f(M, prior)
+
+            uniqueInt = [3, 9, 11]
+            new = M[uniqueInt] / np.sum(M[uniqueInt], axis=0)
+            M = new[[0, 0, 0, 0, 1, 1, 2, 2, 1, 1, 2, 2]]
+
+        return M
+
+    def f(self, M, prior):
+        interventions = [[0, 1, 2, 3], [4, 5, 8, 9], [6, 7, 10, 11]]
+
+        for intervention in interventions:
+            denom = np.sum(M[intervention] * self.lik[intervention] *
+                           prior[intervention], axis=1)
+
+            tmp = ((M[intervention] *
+                    prior[intervention]).T / denom).T
+
+            tmp = np.sum(tmp, axis=0)
+            tmp = tmp / np.sum(tmp)
+            M[intervention, :] = np.tile(tmp, (len(intervention), 1))
+
+        M = (M.T / np.sum(M, axis=1)).T
+        return M
 
     def update_learner_posterior(self):
-        """Calculates the posterior over all possible action/outcome pairs
-        for each graph"""
+        posterior = self.M * self.lik * self.learner_prior
+        self.learner_posterior = (posterior.T / np.sum(posterior, axis=1)).T
 
-        # p(g|a, o) = p(o, a|g) * p(g)
-        post = self.likelihood() * self.teacher_posterior * self.learner_posterior
-        self.learner_posterior = np.nan_to_num(post / np.sum(post, axis=0))
+    def update_sequential_learner_posterior(self):
+        pass
 
-        # check that learner's posterior is a valid distribution
-        # TODO: figure out how to check that a numpy array has both 0s and 1s
+        # def update_learner_posterior(self):
+        #     """Calculates the posterior over all possible action/outcome pairs
+        #     for each graph"""
+
+        #     # p(g|a, o) = p(o, a|g) * p(g)
+        #     post = self.likelihood() * self.teacher_posterior * self.learner_posterior
+        #     self.learner_posterior = np.nan_to_num(post / np.sum(post, axis=0))
+
+        #     # check that learner's posterior is a valid distribution
+        #     # TODO: figure out how to check that a numpy array has both 0s and 1s
 
     def update_teacher_posterior(self):
         """Calculates the posterior of selecting which actions to take"""
+        # p(a, o) = 1 / (|a|^2 * |o|)
         joint_action_obs = 1 / (self.n_actions ** 2 * self.n_observations) * \
             np.ones((self.n_hyp,
                      self.n_observations,
-                     self.n_actions ** 2))  # p(a, o)
+                     self.n_actions ** 2))
 
         # p(g, a, o) = p(g|a, o) * p(a, o)
         joint_all = self.learner_posterior * joint_action_obs
@@ -122,6 +204,17 @@ class GraphTeacher:
         plt.tight_layout()
         plt.show()
 
+    def plot_likelihood(self):
+        ex_num = [0, 4, 6]
+        cause_num = [0, 3, 6]
+        teach = np.zeros((cause_num, ex_num, ex_num))
+
+        for i, cause in enumerate(cause_num):
+            for j, ex_one in enumerate(ex_num):
+                for k, ex_two in enumerate(ex_num):
+                    teach[i, j, k] = self.lik[ex_one, cause] * \
+                        self.sequential_likelihood[ex_one, ex_two, cause]
+
     def plot_learner_posterior_by_hypotheses(self):
         """Visualize the marginalized learner posterior distribution over hypotheses"""
         self.hyp_learner_posterior = np.sum(self.learner_posterior, axis=1)
@@ -162,6 +255,7 @@ class GraphTeacher:
 
         plt.subplot(1, 3, 1)
         plt.bar(ind, common_effect)
+
         plt.xticks(ind, actions)
         plt.title("Common effect")
 
@@ -180,7 +274,100 @@ class GraphTeacher:
 
 
 # run cooperative inference to teach graphs
-graphs = create_graph_hyp_space(transmission_rate=0.9, background_rate=0.05)
+graphs = create_graph_hyp_space(t=0.8, b=0.01)
 graph_teacher = GraphTeacher(graphs)
-graph_teacher.run_cooperative_inference(n_iters=100)
-graph_teacher.plot_teacher_posterior()
+graph_teacher.likelihood()
+graph_teacher.marginal_likelihood(graph_teacher.learner_prior)
+lik = graph_teacher.M
+graph_teacher.update_learner_posterior()
+
+graph_teacher.sequential_likelihood()
+
+ex_num = [0, 4, 6]
+cause_num = [0, 3, 6]
+teach = np.zeros((len(cause_num), len(ex_num), len(ex_num)))
+
+for i, cause in enumerate(cause_num):
+    for j, ex_one in enumerate(ex_num):
+        for k, ex_two in enumerate(ex_num):
+            teach[i, j, k] = lik[ex_one, cause] * \
+                graph_teacher.sequential_likelihood[j, ex_two, cause]
+
+common_cause = [teach[0][0, 0],
+                teach[0][0, 1] + teach[0][1, 0],
+                teach[0][0, 2] + teach[0][2, 0],
+                teach[0][1, 1],
+                teach[0][1, 2] + teach[0][2, 1],
+                teach[0][2, 2]]
+
+common_effect = [teach[1][0, 0],
+                 teach[1][0, 1] + teach[1][1, 0],
+                 teach[1][0, 2] + teach[1][2, 0],
+                 teach[1][1, 1],
+                 teach[1][1, 2] + teach[1][2, 1],
+                 teach[1][2, 2]]
+
+causal_chain = [teach[2][0, 0],
+                teach[2][0, 1] + teach[2][1, 0],
+                teach[2][0, 2] + teach[2][2, 0],
+                teach[2][1, 1],
+                teach[2][1, 2] + teach[2][2, 1],
+                teach[2][2, 2]]
+
+actions = ['11', '12', '13', '22', '23', '33']
+ind = np.arange(len(actions))
+
+plt.figure()
+
+plt.subplot(1, 3, 1)
+plt.bar(ind, common_effect)
+plt.xticks(ind, actions)
+plt.title("Common effect")
+
+plt.subplot(1, 3, 2)
+plt.bar(ind, causal_chain)
+plt.xticks(ind, actions)
+plt.title("Causal chain")
+
+plt.subplot(1, 3, 3)
+plt.bar(ind, common_cause)
+plt.xticks(ind, actions)
+plt.title("Common cause")
+
+plt.tight_layout()
+plt.show()
+
+# interventions = np.array([0, 0, 0, 0, 1, 1, 2, 2, 1, 1, 2, 2])
+# prior_two = np.sum(graph_teacher.learner_posterior[interventions == 0], axis=0)
+# prior_two = prior_two / np.sum(prior_two)
+# prior_two = np.tile(prior_two, (12, 1))
+
+# graph_teacher.marginal_likelihood(prior_two)
+# graph_teacher.compute_likelihood(prior_two)
+
+# M1 = graph_teacher.M.copy()
+# print(graph_teacher.M)
+
+# interventions = [[0, 1, 2, 3], [4, 5, 8, 9], [6, 7, 10, 11]]
+
+# for intervention in interventions:
+#     denom = np.sum(graph_teacher.M[intervention] * graph_teacher.lik[intervention] *
+#                    prior_two[intervention], axis=1)
+
+#     tmp = ((graph_teacher.M[intervention] *
+#             prior_two[intervention]).T / denom).T
+
+#     tmp = np.sum(tmp, axis=0)
+#     tmp = tmp / np.sum(tmp)
+#     graph_teacher.M[intervention, :] = np.tile(tmp, (len(intervention), 1))
+
+# graph_teacher.M = (graph_teacher.M.T / np.sum(graph_teacher.M, axis=1)).T
+
+# uniqueInt = [3, 9, 11]
+# new = graph_teacher.M[uniqueInt] / np.sum(graph_teacher.M[uniqueInt], axis=0)
+# graph_teacher.M = new[[0, 0, 0, 0, 1, 1, 2, 2, 1, 1, 2, 2]]
+# graph_teacher.compute_likelihood(prior_two)
+# np.all(np.isclose(lik, pDgHI))
+# print(graph_teacher.likelihood())
+# graph_teacher.run_cooperative_inference(n_iters=3)
+# graph_teacher.plot_teacher_posterior()
