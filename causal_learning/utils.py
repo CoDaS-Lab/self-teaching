@@ -50,9 +50,12 @@ def create_graph_hyp_space(t=0.9, b=0.05):
 
     common_cause_2 = np.array([[0, 0, 0], [1, 0, 1], [0, 0, 0]])
     common_cause_2_lik = permute_likelihood(common_cause_1_lik, (2, 1, 3))
+    common_cause_2_lik[7], common_cause_2_lik[10] = common_cause_2_lik[10], common_cause_2_lik[7]
 
     common_cause_3 = np.array([[0, 0, 0], [0, 0, 0], [1, 1, 0]])
-    common_cause_2_lik = permute_likelihood(common_cause_1_lik, (3, 1, 2))
+    common_cause_3_lik = permute_likelihood(common_cause_1_lik, (3, 1, 2))
+    common_cause_3_lik[1], common_cause_3_lik[2] = common_cause_3_lik[2], common_cause_3_lik[1]
+    common_cause_3_lik[5], common_cause_3_lik[8] = common_cause_3_lik[8], common_cause_3_lik[5]
 
     common_effect_1 = np.array([[0, 0, 1], [0, 0, 1], [0, 0, 0]])
     common_effect_1_lik = np.array(
@@ -63,9 +66,12 @@ def create_graph_hyp_space(t=0.9, b=0.05):
 
     common_effect_2 = np.array([[0, 1, 0], [0, 0, 0], [0, 1, 0]])
     common_effect_2_lik = permute_likelihood(common_effect_1_lik, (3, 1, 2))
+    common_effect_2_lik[1], common_effect_2_lik[2] = common_effect_2_lik[2], common_effect_2_lik[1]
 
     common_effect_3 = np.array([[0, 0, 0], [1, 0, 0], [1, 0, 0]])
     common_effect_3_lik = permute_likelihood(common_effect_1_lik, (2, 3, 1))
+    common_effect_3_lik[5], common_effect_3_lik[8] = common_effect_3_lik[8], common_effect_3_lik[5]
+    common_effect_3_lik[7], common_effect_3_lik[10] = common_effect_3_lik[10], common_effect_3_lik[7]
 
     causal_chain_1 = np.array([[0, 1, 0], [0, 0, 1], [0, 0, 0]])
     causal_chain_1_lik = np.array(
