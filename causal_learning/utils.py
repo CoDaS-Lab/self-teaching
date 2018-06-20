@@ -86,19 +86,19 @@ def create_graph_hyp_space(t=0.8, b=0.01):
          b*(1 - t)*(1-b), b*(t + (1-t)*b), b*(1-t)*(1-b), b*(t + (1-t)*b)]
     )
 
-    causal_chain_2 = np.array([[0, 0, 0], [1, 0, 0], [0, 1, 0]])
+    causal_chain_2 = np.array([[0, 0, 1], [0, 0, 0], [0, 1, 0]])
     causal_chain_2_lik = permute_likelihood(causal_chain_1_lik, (1, 3, 2))
     causal_chain_2_lik[1], causal_chain_2_lik[2] = \
         causal_chain_2_lik[2], causal_chain_2_lik[1]
 
-    causal_chain_3 = np.array([[0, 0, 1], [1, 0, 0], [0, 0, 0]])
+    causal_chain_3 = np.array([[0, 0, 0], [0, 0, 1], [1, 0, 0]])
     causal_chain_3_lik = permute_likelihood(causal_chain_1_lik, (2, 3, 1))
     causal_chain_3_lik[5], causal_chain_3_lik[8] = \
         causal_chain_3_lik[8], causal_chain_3_lik[5]
     causal_chain_3_lik[7], causal_chain_3_lik[10] = \
         causal_chain_3_lik[10], causal_chain_3_lik[7]
 
-    causal_chain_4 = np.array([[0, 0, 0], [0, 0, 1], [1, 0, 0]])
+    causal_chain_4 = np.array([[0, 0, 1], [1, 0, 0], [1, 0, 0]])
     causal_chain_4_lik = permute_likelihood(causal_chain_1_lik, (2, 1, 3))
     causal_chain_4_lik[7], causal_chain_4_lik[10] = \
         causal_chain_4_lik[10], causal_chain_4_lik[7]
@@ -110,8 +110,7 @@ def create_graph_hyp_space(t=0.8, b=0.01):
     causal_chain_5_lik[5], causal_chain_5_lik[8] = \
         causal_chain_5_lik[8], causal_chain_5_lik[5]
 
-    # NOTE: hack! this specifies the likelihoods for a connected chain
-    causal_chain_6 = np.array([[0, 0, 1], [0, 0, 0], [0, 1, 0]])
+    causal_chain_6 = np.array([[0, 0, 0], [1, 0, 0], [0, 1, 0]])
     causal_chain_6_lik = permute_likelihood(causal_chain_1_lik, (3, 2, 1))
     causal_chain_6_lik[1], causal_chain_6_lik[2] = \
         causal_chain_6_lik[2], causal_chain_6_lik[1]
