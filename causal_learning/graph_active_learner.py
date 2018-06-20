@@ -1,86 +1,161 @@
 import numpy as np
 from dag import DirectedGraph
-from utils import create_graph_hyp_space
+import utils
+
 
 class GraphActiveLearner:
     def __init__(self, graphs):
-        self.n_hyp = len(graphs)
-        self.n_actions = 3
-        self.n_observations = 8
         self.hyp = graphs
-        self.prior = 1 / self.n_hyp * np.ones((self.n_hyp, self.n_observations, self.n_actions ** 2))
-        
+        self.n_hyp = len(graphs)
+
+        self.actions = np.array([1, 2, 3])
+        self.n_actions = len(self.actions)
+
+        # the set of possible observations
+        # 0 = intervene, 1 = observed_off, 2 = observed_on
+        self.observations = np.array([[0, 1, 1], [0, 1, 2],
+                                      [0, 2, 1], [0, 2, 2],
+                                      [1, 0, 1], [1, 0, 2],
+                                      [1, 1, 0], [1, 2, 0],
+                                      [2, 0, 1], [2, 0, 2],
+                                      [2, 1, 0], [2, 2, 0]])
+        self.n_observations = len(self.observations)
+
+        # the set of possible interventions
+        self.interventions = np.array([0, 0, 0, 0,
+                                       1, 1, 2, 2,
+                                       1, 1, 2, 2])
+        self.n_interventions = len(np.unique(self.interventions))
+
+        # prior over graphs
+        self.prior = 1 / self.n_hyp * \
+            np.ones((self.n_hyp, self.n_observations))
+
+        assert np.allclose(np.sum(self.prior, axis=0), 1.0)
+
     def likelihood(self):
-        """Returns the likelihood of each action/observation pair for each graph"""
-        # lik = np.array([h.likelihood() for h in self.hyp])
-        # return lik
+        """Calculate p(d|h, i)"""
 
-        full_lik = np.empty((self.n_hyp, self.n_observations, self.n_actions ** 2))
-        
+        lik = np.zeros((self.n_hyp,
+                        self.n_observations))
+
         for i, h in enumerate(self.hyp):
-            lik = h.likelihood()
+            lik[i] = h.lik
 
-            l = 0
-            for j in range(self.n_actions):
-                for k in range(self.n_actions):
-                    full_lik[i, :, l] = lik[:, j] * lik[:, k]
-                    l += 1
+        # the likelihood should sum to 3.0 for each graph
+        assert np.allclose(np.sum(lik, axis=1), 3.0)
 
-        return full_lik
+        return lik
 
-    
     def update_posterior(self):
         """Calculates the posterior over all possible action/observation pairs
         for each graph"""
-        post = self.prior * self.likelihood()
-        self.posterior = np.nan_to_num(post / np.sum(post, axis=0))
-        
+        self.posterior = self.likelihood() * self.prior
+
+        self.posterior = np.nan_to_num(
+            self.posterior / np.sum(self.posterior, axis=0))
+
+        # check sum of posterior is either 0s or 1s
+        assert np.all(np.logical_or(
+            np.isclose(np.sum(self.posterior, axis=0), 1.0),
+            np.isclose(np.sum(self.posterior, axis=0), 0.0)))
+
     def prior_entropy(self):
-        return np.nansum(self.prior * np.log2(1/self.prior), axis=0)
-        
+        prior_entropy = np.nansum(self.prior * np.log2(1/self.prior), axis=0)
+
+        # only consider unique interventions
+        unique_interventions = np.array([0, 4, 6])
+        prior_entropy = prior_entropy[unique_interventions]
+
+        return prior_entropy
+
     def posterior_entropy(self):
-        log_inv_posterior = np.where(self.posterior > 0, np.log2(1/self.posterior), 0)
-        return np.nansum(self.posterior * log_inv_posterior, axis=0)
+        log_inv_posterior = np.where(
+            self.posterior > 0, np.log2(1/self.posterior), 0)
+        posterior_entropy = np.nansum(
+            self.posterior * log_inv_posterior, axis=0)
+
+        return posterior_entropy
 
     def observation_likelihood(self):
-        return np.sum(self.prior * self.likelihood(), axis=0)
-        
+        obs_lik = np.sum(self.prior * self.likelihood(), axis=0)
+
+        assert np.array_equal(self.posterior, np.nan_to_num(
+            (self.likelihood() * self.prior) / obs_lik))
+
+        return obs_lik
+
     def expected_information_gain(self):
-        eig = self.prior_entropy() - np.sum(self.observation_likelihood() * \
-                                            self.posterior_entropy(), axis=0)
+        weighted_posterior_entropy = np.zeros(self.n_actions)
+
+        joint_posterior_entropy = self.observation_likelihood() * \
+            self.posterior_entropy()
+
+        # sum over possible observations
+        for i in range(self.n_actions):
+            weighted_posterior_entropy[i] = np.sum(
+                joint_posterior_entropy[self.interventions == i])
+
+        eig = self.prior_entropy() - weighted_posterior_entropy
+        eig = eig / np.sum(eig)
         return eig
-    
-# if __name__ == "__main__":
-h1 = np.array([[0, 0, 0], [1, 0, 1], [0, 0, 0]])
-h2 = np.array([[0, 1, 1], [0, 0, 0], [0, 0, 0]])
-g1 = DirectedGraph(h1, transmission_rate=0.8, background_rate=0.0)
-g2 = DirectedGraph(h2, transmission_rate=0.8, background_rate=0.0)
-gal1 = GraphActiveLearner([g1, g2])
 
-gal1.update_posterior()
-eig = gal1.expected_information_gain()[0]
-print(eig / np.sum(eig))
 
-h3 = np.array([[0, 0, 1], [0, 0, 0], [0, 1, 0]])
-h4 = np.array([[0, 1, 0], [0, 0, 1], [0, 0, 0]])
-g3 = DirectedGraph(h3, transmission_rate=0.8, background_rate=0.0)
-g4 = DirectedGraph(h4, transmission_rate=0.8, background_rate=0.0)
-gal2 = GraphActiveLearner([g3, g4])
+if __name__ == "__main__":
+    t = 0.8  # transmission rate
+    b = 0.0  # background rate
 
-gal2.update_posterior()
-eig = gal2.expected_information_gain()[0]
-print(np.exp(eig/0.37) / np.sum(np.exp(eig/0.37)))
+    # example one
+    common_cause_1 = np.array([[0, 1, 1], [0, 0, 0], [0, 0, 0]])
+    common_cause_1_lik = np.array(
+        [((1-t)*(1-b))**2, (1-t)*(1-b)*(t + (1-t)*b), (t + (1-t)*b)*(1-t)*(1-b), (t + (1-t)*b)**2,
+         (1-b)**2, (1-b)*b, (1-b)**2, (1-b)*b,
+         b*(1-t)*(1-b), b*(t + (1-t)*b), b*(1-t)*(1-b), b*(t + (1-t)*b)])
 
-h5 = np.array([[0, 1, 0], [0, 0, 1], [0, 0, 0]])
-h6 = np.array([[0, 0, 0], [0, 0, 0], [1, 0, 0]])
-g5 = DirectedGraph(h5, transmission_rate=0.8, background_rate=0.0)
-g6 = DirectedGraph(h6, transmission_rate=0.8, background_rate=0.0)
-gal3 = GraphActiveLearner([g5, g6])
+    common_cause_2 = np.array([[0, 0, 0], [1, 0, 1], [0, 0, 0]])
+    common_cause_2_lik = utils.permute_likelihood(
+        common_cause_1_lik, (2, 1, 3))
+    common_cause_2_lik[7], common_cause_2_lik[10] = \
+        common_cause_2_lik[10], common_cause_2_lik[7]
 
-gal3.update_posterior()
-eig = gal3.expected_information_gain()[0]
-print(eig / np.sum(eig))
+    graphs_one = [common_cause_2, common_cause_1]
+    likelihoods_one = [common_cause_2_lik, common_cause_1_lik]
+    common_cause_graphs = [DirectedGraph(graph, likelihood, t, b)
+                           for (graph, likelihood) in zip(graphs_one, likelihoods_one)]
 
-graphs = create_graph_hyp_space()
-graph_active_learner = GraphActiveLearner(graphs)
-print(graph_active_learner.expected_information_gain()[0])
+    gal_one = GraphActiveLearner(common_cause_graphs)
+    gal_one.update_posterior()
+    print(gal_one.expected_information_gain())
+
+    # example two
+    causal_chain_1 = np.array([[0, 1, 0], [0, 0, 1], [0, 0, 0]])
+    causal_chain_1_lik = np.array(
+        [(1-t)*(1-b)*(1-b), (1-t)*(1-b)*b, (t + (1-t)*b)*(1-t)*(1-b), (t + (1-t)*b)**2,
+         (1-b)*(1-t)*(1-b), (1-b)*(t + (1-t)*b), (1-b)**2, (1-b)*b,
+            b*(1 - t)*(1-b), b*(t + (1-t)*b), b*(1-t)*(1-b), b*(t + (1-t)*b)]
+    )
+
+    causal_chain_2 = np.array([[0, 0, 1], [0, 0, 0], [0, 1, 0]])
+    causal_chain_2_lik = utils.permute_likelihood(
+        causal_chain_1_lik, (1, 3, 2))
+    causal_chain_2_lik[1], causal_chain_2_lik[2] = \
+        causal_chain_2_lik[2], causal_chain_2_lik[1]
+
+    # causal_chain_6 = np.array([[0, 0, 1], [0, 0, 0], [0, 1, 0]])
+    # causal_chain_6_lik = utils.permute_likelihood(
+    #     causal_chain_1_lik, (3, 2, 1))
+    # causal_chain_6_lik[1], causal_chain_6_lik[2] = \
+    #     causal_chain_6_lik[2], causal_chain_6_lik[1]
+    # causal_chain_6_lik[5], causal_chain_6_lik[8] = \
+    #     causal_chain_6_lik[8], causal_chain_6_lik[5]
+    # causal_chain_6_lik[7], causal_chain_6_lik[10] = \
+    #     causal_chain_6_lik[10], causal_chain_6_lik[7]
+
+    graphs_two = [causal_chain_2, causal_chain_1]
+    likelihoods_two = [causal_chain_2_lik, causal_chain_1_lik]
+    causal_chain_graphs = [DirectedGraph(graph, likelihood, t, b)
+                           for (graph, likelihood) in zip(graphs_two, likelihoods_two)]
+
+    gal_two = GraphActiveLearner(causal_chain_graphs)
+    gal_two.update_posterior()
+    print(gal_two.expected_information_gain())
