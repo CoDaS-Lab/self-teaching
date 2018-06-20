@@ -1,6 +1,6 @@
 import numpy as np
-from dag import DirectedGraph
-import utils
+from causal_learning.dag import DirectedGraph
+import causal_learning.utils
 
 
 class GraphActiveLearner:
@@ -51,9 +51,10 @@ class GraphActiveLearner:
         """Calculates the posterior over all possible action/observation pairs
         for each graph"""
         self.posterior = self.likelihood() * self.prior
+        denom = np.sum(self.posterior, axis=0)
 
-        self.posterior = np.nan_to_num(
-            self.posterior / np.sum(self.posterior, axis=0))
+        self.posterior = np.nan_to_num(np.divide(
+            self.posterior, denom, where=denom != 0))
 
         # check sum of posterior is either 0s or 1s
         assert np.all(np.logical_or(
@@ -70,8 +71,8 @@ class GraphActiveLearner:
         return prior_entropy
 
     def posterior_entropy(self):
-        log_inv_posterior = np.where(
-            self.posterior > 0, np.log2(1/self.posterior), 0)
+        inv_posterior = np.divide(1, self.posterior, where=self.posterior != 0)
+        log_inv_posterior = np.log2(inv_posterior, where=inv_posterior != 0)
         posterior_entropy = np.nansum(
             self.posterior * log_inv_posterior, axis=0)
 
@@ -81,7 +82,7 @@ class GraphActiveLearner:
         obs_lik = np.sum(self.prior * self.likelihood(), axis=0)
 
         assert np.array_equal(self.posterior, np.nan_to_num(
-            (self.likelihood() * self.prior) / obs_lik))
+            np.divide((self.likelihood() * self.prior), obs_lik, where=obs_lik != 0)))
 
         return obs_lik
 
@@ -115,8 +116,7 @@ if __name__ == "__main__":
     common_cause_2 = np.array([[0, 0, 0], [1, 0, 1], [0, 0, 0]])
     common_cause_2_lik = utils.permute_likelihood(
         common_cause_1_lik, (2, 1, 3))
-    common_cause_2_lik[7], common_cause_2_lik[10] = \
-        common_cause_2_lik[10], common_cause_2_lik[7]
+    common_cause_2_lik[7], common_cause_2_lik[10] = common_cause_2_lik[10], common_cause_2_lik[7]
 
     graphs_one = [common_cause_2, common_cause_1]
     likelihoods_one = [common_cause_2_lik, common_cause_1_lik]
@@ -138,8 +138,7 @@ if __name__ == "__main__":
     causal_chain_2 = np.array([[0, 0, 1], [0, 0, 0], [0, 1, 0]])
     causal_chain_2_lik = utils.permute_likelihood(
         causal_chain_1_lik, (1, 3, 2))
-    causal_chain_2_lik[1], causal_chain_2_lik[2] = \
-        causal_chain_2_lik[2], causal_chain_2_lik[1]
+    causal_chain_2_lik[1], causal_chain_2_lik[2] = causal_chain_2_lik[2], causal_chain_2_lik[1]
 
     # causal_chain_6 = np.array([[0, 0, 1], [0, 0, 0], [0, 1, 0]])
     # causal_chain_6_lik = utils.permute_likelihood(
