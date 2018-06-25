@@ -207,6 +207,73 @@ def create_teaching_hyp_space(t=0.8, b=0.1):
 def create_active_learning_hyp_space(t=0.8, b=0.0):
     hyp_space = create_graph_hyp_space(t=t, b=b)
 
+    problem_1_graphs = [hyp_space[hyps] for hyps in
+                        ['common_cause_2', 'common_cause_1']]
+    problem_2_graphs = [hyp_space[hyps] for hyps in
+                        ['common_cause_2', 'common_effect_2']]
+    problem_3_graphs = [hyp_space[hyps] for hyps in
+                        ['common_cause_2', 'causal_chain_1']]
+    problem_4_graphs = [hyp_space[hyps] for hyps in
+                        ['common_cause_2', 'causal_chain_4']]
+    problem_5_graphs = [hyp_space[hyps] for hyps in
+                        ['common_cause_2', 'causal_chain_2']]
+    problem_6_graphs = [hyp_space[hyps] for hyps in
+                        ['common_cause_2', 'single_link_1']]
+    problem_7_graphs = [hyp_space[hyps] for hyps in
+                        ['common_cause_2', 'single_link_2']]
+    problem_8_graphs = [hyp_space[hyps] for hyps in
+                        ['common_cause_2', 'single_link_3']]
+    problem_9_graphs = [hyp_space[hyps] for hyps in
+                        ['common_cause_1', 'common_effect_2']]
+    problem_10_graphs = [hyp_space[hyps] for hyps in
+                         ['common_effect_2', 'common_effect_3']]
+    problem_11_graphs = [hyp_space[hyps] for hyps in
+                         ['common_effect_2', 'causal_chain_1']]
+    problem_12_graphs = [hyp_space[hyps] for hyps in
+                         ['common_effect_2', 'causal_chain_4']]
+    problem_13_graphs = [hyp_space[hyps] for hyps in
+                         ['common_effect_2', 'causal_chain_2']]
+    problem_14_graphs = [hyp_space[hyps] for hyps in
+                         ['common_effect_2', 'single_link_1']]
+    problem_15_graphs = [hyp_space[hyps] for hyps in
+                         ['common_effect_2', 'single_link_2']]
+    problem_16_graphs = [hyp_space[hyps] for hyps in
+                         ['common_effect_2', 'single_link_3']]
+    problem_17_graphs = [hyp_space[hyps] for hyps in
+                         ['causal_chain_1', 'causal_chain_3']]
+    problem_18_graphs = [hyp_space[hyps] for hyps in
+                         ['causal_chain_1', 'causal_chain_4']]
+    problem_19_graphs = [hyp_space[hyps] for hyps in
+                         ['causal_chain_1', 'causal_chain_6']]
+    problem_20_graphs = [hyp_space[hyps] for hyps in
+                         ['causal_chain_1', 'causal_chain_5']]
+    problem_21_graphs = [hyp_space[hyps] for hyps in
+                         ['causal_chain_1', 'causal_chain_2']]
+    problem_22_graphs = [hyp_space[hyps] for hyps in
+                         ['causal_chain_1', 'single_link_1']]
+    problem_23_graphs = [hyp_space[hyps] for hyps in
+                         ['causal_chain_1', 'single_link_2']]
+    problem_24_graphs = [hyp_space[hyps] for hyps in
+                         ['causal_chain_1', 'single_link_3']]
+    problem_25_graphs = [hyp_space[hyps] for hyps in
+                         ['causal_chain_1', 'single_link_4']]
+    problem_26_graphs = [hyp_space[hyps] for hyps in
+                         ['causal_chain_1', 'single_link_5']]
+    problem_27_graphs = [hyp_space[hyps] for hyps in
+                         ['causal_chain_1', 'single_link_6']]
+
+    active_learning_problems = [problem_1_graphs, problem_2_graphs, problem_3_graphs,
+                                problem_4_graphs, problem_5_graphs, problem_6_graphs,
+                                problem_7_graphs, problem_8_graphs, problem_9_graphs,
+                                problem_10_graphs, problem_11_graphs, problem_12_graphs,
+                                problem_13_graphs, problem_14_graphs, problem_15_graphs,
+                                problem_16_graphs, problem_17_graphs, problem_18_graphs,
+                                problem_19_graphs, problem_20_graphs, problem_21_graphs,
+                                problem_22_graphs, problem_23_graphs, problem_24_graphs,
+                                problem_25_graphs, problem_26_graphs, problem_27_graphs]
+
+    return active_learning_problems
+
 
 if __name__ == "__main__":
     t = 0.8
