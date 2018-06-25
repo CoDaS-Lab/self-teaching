@@ -74,7 +74,6 @@ class GraphSelfTeacher:
         # print(np.sum(teaching_prior))
 
         # p(d, i|h) \propto p(h|d, i) * p(d, i)
-        print(self.learner_posterior)
         int_obs_posterior = self.learner_posterior * teaching_prior
         int_obs_posterior = np.divide(int_obs_posterior.T, np.sum(
             int_obs_posterior, axis=1)).T
@@ -92,7 +91,7 @@ class GraphSelfTeacher:
             self_teaching_posterior_original[self.interventions == i])
             for i in range(self.n_interventions)]
 
-        print(self_teaching_posterior_original)
+        return self_teaching_posterior_original
 
     def update_teacher_posterior(self):
         teacher_posterior = np.zeros((self.n_hyp,
@@ -130,90 +129,10 @@ if __name__ == "__main__":
     t = 0.8  # transmission rate
     b = 0.0  # background rate
 
-    # example one
-    common_cause_1 = np.array([[0, 1, 1], [0, 0, 0], [0, 0, 0]])
-    common_cause_1_lik = np.array(
-        [((1-t)*(1-b))**2, (1-t)*(1-b)*(t + (1-t)*b), (t + (1-t)*b)*(1-t)*(1-b), (t + (1-t)*b)**2,
-         (1-b)**2, (1-b)*b, (1-b)**2, (1-b)*b,
-         b*(1-t)*(1-b), b*(t + (1-t)*b), b*(1-t)*(1-b), b*(t + (1-t)*b)])
-
-    common_cause_2 = np.array([[0, 0, 0], [1, 0, 1], [0, 0, 0]])
-    common_cause_2_lik = utils.permute_likelihood(
-        common_cause_1_lik, (2, 1, 3))
-    common_cause_2_lik[7], common_cause_2_lik[10] = \
-        common_cause_2_lik[10], common_cause_2_lik[7]
-
-    graphs_one = [common_cause_2, common_cause_1]
-    likelihoods_one = [common_cause_2_lik, common_cause_1_lik]
-    common_cause_graphs = [dag.DirectedGraph(graph, likelihood, t, b)
-                           for (graph, likelihood) in zip(graphs_one, likelihoods_one)]
-
-    np.set_printoptions(suppress=True)
-
-    graphs = utils.create_graph_hyp_space(t=0.8, b=0.01)
-
-    gt = GraphTeacher(graphs)
-    gt.likelihood()
-    teacher_posterior = gt.update_teacher_posterior(
-        gt.learner_prior)
-
-    gst = GraphSelfTeacher(common_cause_graphs)
-    gst.update_learner_posterior()
-    lik = gst.likelihood()
-    self_teacher_posterior = gst.update_self_teaching_posterior()
-
-    # post = self_teacher_posterior[:, gst.unique_interventions]
-
-    causal_chain_1 = np.array([[0, 1, 0], [0, 0, 1], [0, 0, 0]])
-    causal_chain_1_lik = np.array(
-        [(1-t)*(1-b)*(1-b), (1-t)*(1-b)*b, (t + (1-t)*b)*(1-t)*(1-b), (t + (1-t)*b)**2,
-         (1-b)*(1-t)*(1-b), (1-b)*(t + (1-t)*b), (1-b)**2, (1-b)*b,
-            b*(1 - t)*(1-b), b*(t + (1-t)*b), b*(1-t)*(1-b), b*(t + (1-t)*b)]
-    )
-
-    causal_chain_2 = np.array([[0, 0, 1], [0, 0, 0], [0, 1, 0]])
-    causal_chain_2_lik = utils.permute_likelihood(
-        causal_chain_1_lik, (1, 3, 2))
-    causal_chain_2_lik[1], causal_chain_2_lik[2] = \
-        causal_chain_2_lik[2], causal_chain_2_lik[1]
-
-    graphs_two = [causal_chain_2, causal_chain_1]
-    likelihoods_two = [causal_chain_2_lik, causal_chain_1_lik]
-    causal_chain_graphs = [dag.DirectedGraph(graph, likelihood, t, b)
-                           for (graph, likelihood) in zip(graphs_two, likelihoods_two)]
-
-    gst = GraphSelfTeacher(causal_chain_graphs)
-    gst.update_learner_posterior()
-    lik = gst.likelihood()
-    self_teacher_posterior = gst.update_self_teaching_posterior()
-
-    common_effect_1 = np.array([[0, 0, 1], [0, 0, 1], [0, 0, 0]])
-    common_effect_1_lik = np.array(
-        [(1-b)*(1-t)*(1-b), (1-b)*(t + (1-t)*b), b*(1-t)*(1-t)*(1-b),
-         b*(t*(1-t) + (1-t)*t + t*t + b*((1-t)**2)),
-         (1-b)*(1-t)*(1-b), (1-b)*(t + (1-t)*b), (1-b)*(1-b), (1-b)*b,
-         b*(1-t)*(1-t)*(1-b), b*(t*(1-t) + (1-t)*t + t*t + b*((1-t)**2)), (1-b)*b, b*b])
-
-    common_effect_2 = np.array([[0, 1, 0], [0, 0, 0], [0, 1, 0]])
-    common_effect_2_lik = utils.permute_likelihood(
-        common_effect_1_lik, (3, 1, 2))
-    common_effect_2_lik[1], common_effect_2_lik[2] = \
-        common_effect_2_lik[2], common_effect_2_lik[1]
-
-    single_link = np.array([[0, 1, 0], [0, 0, 0], [0, 0, 0]])
-    single_link_lik = np.array([(1-t)*(1-b)*(1-b), (1-t)*(1-b)*b,
-                                (t + (1-t)*b)*(1-b), (t + (1-t)*b)*b,
-                                (1-b)*(1-b), (1-b)*b,
-                                (1-b)*(1-b), (1-b)*b,
-                                b*(1-b), b*b,
-                                b*(1-t)*(1-b), b*(t + (1-t)*b)])
-
-    graphs_three = [common_effect_2, single_link]
-    likelihoods_three = [common_effect_2_lik, single_link_lik]
-    ex_three_graphs = [dag.DirectedGraph(graph, likelihood, t, b)
-                       for (graph, likelihood) in zip(graphs_three, likelihoods_three)]
-
-    gst = GraphSelfTeacher(ex_three_graphs)
-    gst.update_learner_posterior()
-    lik = gst.likelihood()
-    self_teacher_posterior = gst.update_self_teaching_posterior()
+    # get predictions of self-teaching model for all 27 problems
+    active_learning_problems = utils.create_active_learning_hyp_space(t=t, b=b)
+    for i, active_learning_problem in enumerate(active_learning_problems):
+        gst = GraphSelfTeacher(active_learning_problem)
+        gst.update_learner_posterior()
+        self_teaching_posterior = gst.update_self_teaching_posterior()
+        print("Problem {}:".format(i+1), self_teaching_posterior)
