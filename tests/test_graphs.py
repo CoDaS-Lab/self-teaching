@@ -83,7 +83,7 @@ def test_likelihood():
           0.00802000, 0.00802000, 0.00802000, 0.00802000, 0.64320400, 0.64320400]
          ])
 
-    graphs = utils.create_graph_hyp_space(t=t, b=b)
+    graphs = utils.create_teaching_hyp_space(t=t, b=b)
     graph_teacher = GraphTeacher(graphs)
     graph_teacher.likelihood()
 
@@ -104,7 +104,7 @@ def test_causal_graph_simulation():
                             [0.24782723, 0.11684906, 0.05856264],
                             [0.05073297, 0.08789775, 0.02320289]]])
 
-    graphs = utils.create_graph_hyp_space(t=0.8, b=0.01)
+    graphs = utils.create_teaching_hyp_space(t=0.8, b=0.01)
     graph_teacher = GraphTeacher(graphs)
     graph_teacher.likelihood()
     graph_teacher.update_teacher_posterior(graph_teacher.learner_prior)
@@ -121,24 +121,12 @@ def test_graph_active_learner_one():
     b = 0.0  # background rate
 
     # example one
-    common_cause_1 = np.array([[0, 1, 1], [0, 0, 0], [0, 0, 0]])
-    common_cause_1_lik = np.array(
-        [((1-t)*(1-b))**2, (1-t)*(1-b)*(t + (1-t)*b), (t + (1-t)*b)*(1-t)*(1-b), (t + (1-t)*b)**2,
-         (1-b)**2, (1-b)*b, (1-b)**2, (1-b)*b,
-         b*(1-t)*(1-b), b*(t + (1-t)*b), b*(1-t)*(1-b), b*(t + (1-t)*b)])
+    hyp_space = utils.create_graph_hyp_space(t=t, b=b)
+    example_one_graph_names = ['common_cause_1', 'common_cause_2']
+    example_one_graphs = [hyp_space[graph_name]
+                          for graph_name in example_one_graph_names]
 
-    common_cause_2 = np.array([[0, 0, 0], [1, 0, 1], [0, 0, 0]])
-    common_cause_2_lik = utils.permute_likelihood(
-        common_cause_1_lik, (2, 1, 3))
-    common_cause_2_lik[7], common_cause_2_lik[10] = \
-        common_cause_2_lik[10], common_cause_2_lik[7]
-
-    graphs_one = [common_cause_2, common_cause_1]
-    likelihoods_one = [common_cause_2_lik, common_cause_1_lik]
-    common_cause_graphs = [DirectedGraph(graph, likelihood, t, b)
-                           for (graph, likelihood) in zip(graphs_one, likelihoods_one)]
-
-    gal_one = GraphActiveLearner(common_cause_graphs)
+    gal_one = GraphActiveLearner(example_one_graphs)
     gal_one.update_posterior()
 
     true_eig = np.array([0.5, 0.5, 0])
@@ -150,27 +138,31 @@ def test_graph_active_learner_two():
     t = 0.8  # transmission rate
     b = 0.0  # background rate
 
-    causal_chain_1 = np.array([[0, 1, 0], [0, 0, 1], [0, 0, 0]])
-    causal_chain_1_lik = np.array(
-        [(1-t)*(1-b)*(1-b), (1-t)*(1-b)*b, (t + (1-t)*b)*(1-t)*(1-b), (t + (1-t)*b)**2,
-         (1-b)*(1-t)*(1-b), (1-b)*(t + (1-t)*b), (1-b)**2, (1-b)*b,
-            b*(1 - t)*(1-b), b*(t + (1-t)*b), b*(1-t)*(1-b), b*(t + (1-t)*b)]
-    )
+    hyp_space = utils.create_graph_hyp_space(t=t, b=b)
+    example_two_graph_names = ['causal_chain_1', 'causal_chain_2']
+    example_two_graphs = [hyp_space[graph_name]
+                          for graph_name in example_two_graph_names]
 
-    causal_chain_2 = np.array([[0, 0, 1], [0, 0, 0], [0, 1, 0]])
-    causal_chain_2_lik = utils.permute_likelihood(
-        causal_chain_1_lik, (1, 3, 2))
-    causal_chain_2_lik[1], causal_chain_2_lik[2] = \
-        causal_chain_2_lik[2], causal_chain_2_lik[1]
-
-    graphs_two = [causal_chain_2, causal_chain_1]
-    likelihoods_two = [causal_chain_2_lik, causal_chain_1_lik]
-    causal_chain_graphs = [DirectedGraph(graph, likelihood, t, b)
-                           for (graph, likelihood) in zip(graphs_two, likelihoods_two)]
-
-    gal_two = GraphActiveLearner(causal_chain_graphs)
+    gal_two = GraphActiveLearner(example_two_graphs)
     gal_two.update_posterior()
 
     true_eig = np.array([0.11594429, 0.44202786, 0.44202786])
 
     assert np.allclose(true_eig, gal_two.expected_information_gain())
+
+
+def test_graph_active_learner_three():
+    t = 0.8  # transmission rate
+    b = 0.0  # background rate
+
+    hyp_space = utils.create_graph_hyp_space(t=t, b=b)
+    example_three_graph_names = ['common_effect_2', 'single_link_1']
+    example_three_graphs = [hyp_space[graph_name]
+                            for graph_name in example_three_graph_names]
+
+    gal_three = GraphActiveLearner(example_three_graphs)
+    gal_three.update_posterior()
+
+    true_eig = np.array([0.0, 0.0, 1.0])
+
+    assert np.allclose(true_eig, gal_three.expected_information_gain())

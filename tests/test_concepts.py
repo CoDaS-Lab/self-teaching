@@ -2,6 +2,7 @@ import pytest
 import numpy as np
 from concept_learning.utils import create_line_hyp_space
 from concept_learning.utils import create_boundary_hyp_space
+from concept_learning.self_teacher import SelfTeacher
 
 
 def test_create_line_hyp_space():
@@ -45,5 +46,14 @@ def test_create_boundary_hyp_space():
     assert np.array_equal(boundary_hyp_space_two, true_hyp_space_two)
 
 
-# TODO: add test for likelihood
+def test_self_teacher():
+    n_features = 3
+    hyp_space_type = "boundary"
+    sampling = "max"
 
+    self_teacher = SelfTeacher(n_features, hyp_space_type, sampling=sampling)
+    _, _, self_teacher_prob = self_teacher.run()
+
+    first_feature_prob = np.array([50/154, 54/154, 50/154])
+
+    assert np.allclose(first_feature_prob, self_teacher_prob)
