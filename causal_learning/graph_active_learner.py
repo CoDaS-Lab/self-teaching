@@ -1,4 +1,6 @@
 import numpy as np
+import matplotlib.pyplot as plt
+import ternary
 from causal_learning import dag
 from causal_learning import utils
 
@@ -108,7 +110,38 @@ if __name__ == "__main__":
 
     # get predictions of information gain model for all 27 problems
     active_learning_problems = utils.create_active_learning_hyp_space(t=t, b=b)
+    ig_model_predictions = []
+    tau = 0.37
+
     for i, active_learning_problem in enumerate(active_learning_problems):
         gal = GraphActiveLearner(active_learning_problem)
         gal.update_posterior()
-        print("Problem {}:".format(i+1), gal.expected_information_gain())
+        eig = gal.expected_information_gain().tolist()
+        ig_model_predictions.append(eig)
+        # print("Problem {}:".format(i+1), gal.expected_information_gain())
+
+    figure, ax = plt.subplots()
+    ax.set_frame_on(False)
+    ax.set_xticks([])
+    ax.set_yticks([])
+
+    for i in range(len(ig_model_predictions)):
+        # make ternary plot
+        scale = 1
+        ax = figure.add_subplot(3, 9, i+1)
+        tax = ternary.TernaryAxesSubplot(ax=ax)
+        figure.set_size_inches(10, 10)
+        tax.set_title("Problem {}".format(i+1), fontsize=10)
+        tax.boundary(linewidth=2.0)
+        # tau_samples = np.random.normal(tau, 0.1, 1000)
+        # ig_samples = [np.exp(ig_model_predictions[i]/tau_sample) /
+        #               np.sum(np.exp(ig_model_predictions[i]/tau_sample))
+        #               for tau_sample in tau_samples]
+
+        tax.scatter([ig_model_predictions[i]], marker='o', color='blue')
+        tax.clear_matplotlib_ticks()
+        ax.set_frame_on(False)
+
+    figure.suptitle("Predictions from the Information Gain Model")
+
+    plt.show()

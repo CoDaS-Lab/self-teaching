@@ -1,4 +1,6 @@
 import numpy as np
+import matplotlib.pyplot as plt
+import ternary
 from causal_learning import dag
 from causal_learning import utils
 from causal_learning.graph_teacher import GraphTeacher
@@ -131,8 +133,38 @@ if __name__ == "__main__":
 
     # get predictions of self-teaching model for all 27 problems
     active_learning_problems = utils.create_active_learning_hyp_space(t=t, b=b)
+    self_teaching_model_predictions = []
+
     for i, active_learning_problem in enumerate(active_learning_problems):
         gst = GraphSelfTeacher(active_learning_problem)
         gst.update_learner_posterior()
         self_teaching_posterior = gst.update_self_teaching_posterior()
-        print("Problem {}:".format(i+1), self_teaching_posterior)
+        self_teaching_model_predictions.append(self_teaching_posterior)
+        # print("Problem {}:".format(i+1), self_teaching_posterior)
+
+    figure, ax = plt.subplots()
+    ax.set_frame_on(False)
+    ax.set_xticks([])
+    ax.set_yticks([])
+
+    for i in range(len(self_teaching_model_predictions)):
+        # make ternary plot
+        scale = 1
+        ax = figure.add_subplot(3, 9, i+1)
+        tax = ternary.TernaryAxesSubplot(ax=ax)
+        figure.set_size_inches(10, 10)
+        tax.set_title("Problem {}".format(i+1), fontsize=10)
+        tax.boundary(linewidth=2.0)
+        # tau_samples = np.random.normal(tau, 0.1, 1000)
+        # ig_samples = [np.exp(ig_model_predictions[i]/tau_sample) /
+        #               np.sum(np.exp(ig_model_predictions[i]/tau_sample))
+        #               for tau_sample in tau_samples]
+
+        tax.scatter([self_teaching_model_predictions[i]],
+                    marker='o', color='red')
+        tax.clear_matplotlib_ticks()
+        ax.set_frame_on(False)
+
+    figure.suptitle("Predictions from the Self-Teaching Model")
+
+    plt.show()
