@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from causal_learning.utils import create_graph_hyp_space
+from causal_learning import utils
+from causal_learning import dag
 
 
 class GraphTeacher:
@@ -39,7 +40,7 @@ class GraphTeacher:
     def likelihood(self):
         """Calculates p(d|h, i)"""
 
-        self.lik = np.empty((self.n_hyp,
+        self.lik = np.zeros((self.n_hyp,
                              self.n_observations))
 
         for i, h in enumerate(self.hyp):
@@ -60,6 +61,7 @@ class GraphTeacher:
 
             tmp = np.sum(tmp, axis=0)
             tmp = tmp / np.sum(tmp)
+
             teacher_posterior[self.interventions == i, :] = np.tile(
                 tmp, (np.sum(self.interventions == i), 1))
 
@@ -202,7 +204,7 @@ class GraphTeacher:
 
 if __name__ == "__main__":
     # run cooperative inference to teach graphs
-    graphs = create_graph_hyp_space(t=0.8, b=0.01)
+    graphs = utils.create_teaching_hyp_space(t=0.8, b=0.01)
     graph_teacher = GraphTeacher(graphs)
 
     graph_teacher.likelihood()
