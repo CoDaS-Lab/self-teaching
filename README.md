@@ -17,10 +17,10 @@ To run the concept learning simulations:
 python simulations/self_teaching_simulations.py
 ```
 
-To run the causal learning simulations (teaching only):
+To run the causal learning simulations (both active learning and self-teaching):
 
 ```bash
-python causal_learning/graph_teacher.py
+python causal_learning/graph_simulations.py
 ```
 
 To run the tests:
