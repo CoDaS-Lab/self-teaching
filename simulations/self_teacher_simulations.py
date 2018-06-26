@@ -8,7 +8,7 @@ import warnings
 warnings.filterwarnings('ignore')
 
 # run self teaching code
-n_features = 8
+n_features = 3
 n_iters = 1000
 
 self_teacher_boundary_obs = np.zeros(n_iters)
@@ -26,17 +26,19 @@ for i in range(n_iters):
     self_teacher = SelfTeacher(n_features, hyp_space_type, sampling=sampling)
     self_teacher_boundary_obs[i], self_teacher_boundary_post[i,
                                                              :], self_teacher_prob = self_teacher.run()
-    active_learner = ActiveLearner(n_features, hyp_space_type, sampling=sampling)
+    active_learner = ActiveLearner(
+        n_features, hyp_space_type, sampling=sampling)
     active_learner_boundary_obs[i], active_learner_boundary_post[i,
-                                                             :], active_learner_prob = active_learner.run()
+                                                                 :], active_learner_prob = active_learner.run()
 
 # plot results
 self_teacher_boundary_post_mean = np.mean(self_teacher_boundary_post, axis=0)
-active_learner_boundary_post_mean = np.mean(active_learner_boundary_post, axis=0)
+active_learner_boundary_post_mean = np.mean(
+    active_learner_boundary_post, axis=0)
 plt.plot(np.arange(len(self_teacher_boundary_post_mean)), self_teacher_boundary_post_mean,
-         label = "self teacher")
+         label="self teacher")
 plt.plot(np.arange(len(active_learner_boundary_post_mean)), active_learner_boundary_post_mean,
-         label = "active learner")
+         label="active learner")
 plt.legend()
 plt.show()
 
@@ -50,7 +52,8 @@ plt.show()
 
 
 # plot first feature prob
-plt.plot(np.arange(n_features), self_teacher_prob ** 3 / np.sum(self_teacher_prob ** 3), label = "self teacher")
-plt.plot(np.arange(n_features), active_learner_prob, label = "active learner")
+plt.plot(np.arange(n_features), self_teacher_prob ** 3 /
+         np.sum(self_teacher_prob ** 3), label="self teacher")
+plt.plot(np.arange(n_features), active_learner_prob, label="active learner")
 plt.legend()
 plt.show()

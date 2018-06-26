@@ -19,10 +19,8 @@ class SelfTeacher:
         self.n_hyp = len(self.hyp_space)
         self.learner_prior = (1 / self.n_hyp) * \
             np.ones((self.n_hyp, self.n_features, self.n_labels))
-        self.teacher_prior = (1 / self.n_features) * \
-            np.ones((self.n_hyp, self.n_features, self.n_labels))
-        self.self_teaching_posterior = (1 / self.n_hyp) * \
-            np.ones((self.n_hyp, self.n_features, self.n_labels))
+        self.self_teaching_posterior = np.zeros(
+            (self.n_hyp, self.n_features, self.n_labels))
         self.learner_posterior = self.learner_prior
         self.sampling = sampling
 
@@ -67,10 +65,11 @@ class SelfTeacher:
 
         # new way of calculating posterior w/o teaching posterior
         self.learner_posterior = lik * self.learner_posterior
-        
+        denom = np.sum(self.learner_posterior, axis=0)
+
         # normalize across each hypothesis
-        self.learner_posterior = np.nan_to_num(self.learner_posterior /
-                                               np.sum(self.learner_posterior, axis=0))
+        self.learner_posterior = np.divide(self.learner_posterior,
+                                           denom, where=denom != 0)
 
     def update_self_teaching_posterior(self):
         """Calculates the posterior of self teaching for determining which points
@@ -78,7 +77,7 @@ class SelfTeacher:
 
         # use same code as teacher.py to calculate teaching posterior
         # uniform joint over data, which is broadcasted into correct shape
-        prob_joint_data = (1 / self.n_features * self.n_labels) * \
+        prob_joint_data = (1 / (self.n_features * self.n_labels)) * \
             np.ones((self.n_hyp, self.n_features, self.n_labels))  # p(x, y)
 
         # multiply with posterior to get overall joint
@@ -97,10 +96,11 @@ class SelfTeacher:
         # prob_conditional_features = prob_joint_hyp_features / self.learner_prior
 
         # marginalize over x, i.e. p(h) = \sum_x p(h, x)
-        prob_conditional_features = prob_joint_hyp_features / \
-            np.repeat(np.sum(prob_joint_hyp_features, axis=1),
-                      self.n_features).reshape(
-                          self.n_hyp, self.n_features, self.n_labels)
+        denom = np.repeat(np.sum(prob_joint_hyp_features, axis=1), self.n_features).reshape(
+            self.n_hyp, self.n_features, self.n_labels)
+
+        prob_conditional_features = np.divide(prob_joint_hyp_features,
+                                              denom, where=denom != 0)
         prob_conditional_features = np.nan_to_num(prob_conditional_features)
 
         # calculate equation for self-teaching
@@ -147,12 +147,12 @@ class SelfTeacher:
             # select proportionally
             if np.all(np.sum(self_teaching_posterior_sample)) != 0:
                 self_teaching_prob = self_teaching_posterior_sample / \
-                                     np.nansum(self_teaching_posterior_sample)
+                    np.nansum(self_teaching_posterior_sample)
                 self_teaching_data = np.random.choice(np.arange(self.n_features),
-                                                  p=self_teaching_prob)
+                                                      p=self_teaching_prob)
             else:
                 print("Error!")
-        
+
         if self.n_obs == 0:
             self.first_feature_prob = self_teaching_posterior_sample
 
@@ -190,7 +190,7 @@ class SelfTeacher:
 
             # update new learner posterior by broadcasting
             self.learner_posterior = np.repeat(
-                updated_learner_posterior, \
+                updated_learner_posterior,
                 self.n_labels * self.n_features).reshape(
                     self.n_hyp, self.n_features, self.n_labels)
 
