@@ -45,9 +45,9 @@ if __name__ == "__main__":
         tax.set_title("Problem {}".format(i+1), fontsize=10)
         tax.boundary(linewidth=2.0)
         tax.scatter([ig_model_predictions[i]], marker='o',
-                    color='blue', label="Active Learning")
+                    color='red', label="Information Gain")
         tax.scatter([self_teaching_model_predictions[i]],
-                    marker='o', color='red', label="Self-Teaching")
+                    marker='o', color='blue', label="Self-Teaching")
         tax.clear_matplotlib_ticks()
         ax.set_frame_on(False)
         handles, labels = ax.get_legend_handles_labels()

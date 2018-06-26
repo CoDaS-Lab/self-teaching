@@ -262,15 +262,20 @@ def create_active_learning_hyp_space(t=0.8, b=0.0):
     problem_27_graphs = [hyp_space[hyps] for hyps in
                          ['causal_chain_1', 'single_link_6']]
 
-    active_learning_problems = [problem_1_graphs, problem_2_graphs, problem_3_graphs,
-                                problem_4_graphs, problem_5_graphs, problem_6_graphs,
-                                problem_7_graphs, problem_8_graphs, problem_9_graphs,
-                                problem_10_graphs, problem_11_graphs, problem_12_graphs,
-                                problem_13_graphs, problem_14_graphs, problem_15_graphs,
-                                problem_16_graphs, problem_17_graphs, problem_18_graphs,
-                                problem_19_graphs, problem_20_graphs, problem_21_graphs,
-                                problem_22_graphs, problem_23_graphs, problem_24_graphs,
-                                problem_25_graphs, problem_26_graphs, problem_27_graphs]
+    active_learning_problems = [problem_1_graphs, problem_2_graphs,
+                                problem_3_graphs, problem_4_graphs,
+                                problem_5_graphs, problem_6_graphs,
+                                problem_7_graphs, problem_8_graphs,
+                                problem_9_graphs, problem_10_graphs,
+                                problem_11_graphs, problem_12_graphs,
+                                problem_13_graphs, problem_14_graphs,
+                                problem_15_graphs, problem_16_graphs,
+                                problem_17_graphs, problem_18_graphs,
+                                problem_19_graphs, problem_20_graphs,
+                                problem_21_graphs, problem_22_graphs,
+                                problem_23_graphs, problem_24_graphs,
+                                problem_25_graphs, problem_26_graphs,
+                                problem_27_graphs]
 
     return active_learning_problems
 
