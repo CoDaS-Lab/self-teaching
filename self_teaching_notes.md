@@ -1,8 +1,47 @@
-# Notes on self-teaching
+# Notes for self-teaching project
+
+## Active learning
+
+The active learning model acts by selecting the feature which will provide the highest expected information gain.
+
+First, assume we have a prior over hypotheses $p(h)$, and can also calculate the posterior $p(h|x, y) \propto p(x, y|h)p(h)$ after observing a feature, label pair: $\langle x, y \rangle$
+
+The entropy of a random variable is calculated by: $H(X) = - \sum_x p(x) \log_2 p(x)$
+
+Thus, the prior entropy is: $H(p(h)) = - \sum_{h \in \mathcal{H}} p(h) \log_2 p(h)$
+
+And the posterior entropy after observing $\langle x, y \rangle$ is: 
+
+$$H(p(h|\langle x, y \rangle) = - \sum_{h \in \mathcal{H}} p(h|\langle x, y \rangle) \log_2 p(h|\langle x, y \rangle)$$
+
+The information gain is calculated by:
+
+$$IG(\langle x, y \rangle) = H(p(h)) - H(p(h|\langle x, y \rangle))$$
+
+By taking the expectation by weighting the probability of each outcome, we obtain the expected information gain:
+
+$$EIG(\langle x, y \rangle) = \sum_i p(y_i|x) IG(\langle x, y \rangle)$$
+
+Alternatively, we can write the expected information gain like so:
+
+$$
+\begin{aligned}
+EIG ( x ) &= - \sum _ { y } p ( y | x ) H ( p ( h | x , y ) ) \\
+&= \sum_y p(y|x) \sum_{h \in \mathcal{H}} p(h|\langle x, y \rangle) \log_2 p(h|\langle x, y \rangle)
+\end{aligned}
+$$
+
+Note: can probably remove prior entropy from EIG since it is only a constant (assuming a prior that has equal probability for all hypotheses)
+
+TODO: expand and simplify if possible$\dots$want to get this equation 
+
+TODO: add note on how $p(y_i|x)$ is calculated
+
+(Note: I think my code calculates something a bit different than this exactly, but trying to figure out a consistent set of notation that is easy to read and used across other active learning papers)
 
 ## Teaching model
 
-In the teaching model, the teacher presents pairs of feature and label pairs to the learner using the following set of recursive equations:
+In the standard teaching model, the teacher presents pairs of feature and label pairs to the learner using the following set of recursive equations:
 
 $$P_L(h|x, y) \propto P_T(x, y|h)P_L(h)$$
 
@@ -18,7 +57,7 @@ The direct instruction model is a variant of the teaching model where the teache
 
 $$P_L(h|x, y) \propto P(y|x, h)P_T(x|h)P_L(h)$$
 
-Now the teacher only selects the feature $x$ to teach, and $y$ is observed from the environment instead. Note: this equation doesn't look correct to me as the right term when simplified is equal to $P(h, x)$
+Now the teacher only selects the feature $x$ to teach, and $y$ is observed from the environment instead. ~~Note: this equation doesn't look correct to me as the right term when simplified is equal to the joint probability.~~ (Actually, this is indeed correct, the conditional probability is proportional to the joint probability)
 
 $$P_T(x|h) \propto \sum_y P_L(h|x, y) P_T(x, y)$$
 
@@ -26,7 +65,7 @@ In the code, the learner's posterior is updated in the following manner:
 
 $$P_L(h|x, y) = \frac{P(y|x, h)P_T(x|h)P_L(h)}{\sum_h' P(y|x, h')P_T(x|h')P_L(h')}$$ 
 
-Where $P_L(h)$ is initialized to be $1/|h|$ and $P_T(x|h)$ is initialized to be $1/|x||y|$.
+Where $P_L(h)$ is initialized to be $1/|h|$ and $P_T(x|h)$ is initialized to be $1/|x||y|$. Since the teaching probability $P_T(x|h)$ is uniform at first, it has no effect initially but does so once cooperative inference kicks in.
 
 Then, the teacher's posterior is updated in the following manner:
 
@@ -58,6 +97,8 @@ $$P_T(x|h') \propto \sum_y P_L(h'|x, y) P_T(x, y)$$
 
 $$P_T(x|h) = \sum_{h'} P_T(x|h') \delta(h'|h)$$
 
+$$= \sum_{h'} \sum_y P_L(h'|x, y) P_T(x, y) p(h') = \sum_{h'} \sum_y P_L(h', x, y) = P_T(x)$$
+
 where $h$ is the true hypothesis, and $h'$ is the learner's guess of the true hypothesis. In these equations, $\delta(h|h')$ refers to the knowledge of the teacher, which we can modify to become $P_L(h')$, which is now independent of the true hypothesis $h$. Thus, the self-teaching model can be written as:
 
 $$P_L(h|x, y) \propto P(y|x, h)P(h)$$ and $P_T(x|h)$ 
@@ -86,15 +127,15 @@ $$P_L(h|x, y) = \frac{P(y|x, h) P_T(x|h)}{\sum_h P(y|x, h') P_T(x|h')}$$
 
 To update the self-teaching posterior, we run update_self_teaching_posterior which calculates:
 
-prob_joint_data: $P(x, y) = \frac{1}{|x||y|} \quad \forall x, y$
+`prob_joint_data`: $P(x, y) = \frac{1}{|x||y|} \quad \forall x, y$
 
-prob_joint: $P(h', x, y) = P(h'|x, y)P(x, y)$
+`prob_joint`: $P(h', x, y) = P(h'|x, y)P(x, y)$
 
-prob_joint_hyp_features: $P(h', x) = \sum_y P(h', x, y)$
+`prob_joint_hyp_features`: $P(h', x) = \sum_y P(h', x, y)$
 
-prob_conditional_features: $P(x|h') = \frac{P(h', x)}{P(h')} = \frac{P(h', x)}{\sum_x P(h', x)}$
+`prob_conditional_features`: $P(x|h') = \frac{P(h', x)}{P(h')} = \frac{P(h', x)}{\sum_x P(h', x)}$
 
-self_teaching_posterior: $P(x) \propto \sum_{h'} \sum_y P(x|h) P(h'|x, y)$ 
+`self_teaching_posterior`: $P(x) \propto \sum_{h'} \sum_y P(x|h) P(h'|x, y)$ 
 
 Right now the self-teaching posterior code uses $P(h'|x, y)$ at the end, but according to the equations this should be replaced with the prior $P(h')$ instead. Discussion with Scott resolved this, it should use the prior instead and when done so it shows that the beahviour of the self-teaching model acts like an active learner instead. 
 
@@ -106,7 +147,7 @@ $$y = h(x^*)$$
 
 Then, the learner's posterior is updated using the above equation.
 
-## Batch self-teaching model
+## Batch self-teaching model (can safely ignore, not considering anymore)
 
 In the batch version of the self-teaching model, rather than evaluating which features $x$ to self-teach and select by simulating one-step ahead, the model instead evaluates a set of features $x_1, \dots, x_n$ and corresponding features $y_1, \dots, y_n$ using the same equations as above in the self-teaching model.
 
@@ -114,23 +155,23 @@ However, once we have obtained a self-teaching posterior, instead of it looking 
 
 $$ P_T(x) = \sum_{x \in (x_1, \dots, x_n)} \frac{P_T(x_1, \dots, x_n)}{n}$$
 
-## Incremental self-teaching model
-In the incremental self-teaching model, we extend the self-teaching model
+<!-- ## Incremental self-teaching model -->
+<!-- In the incremental self-teaching model, we extend the self-teaching model -->
 
-## Teaching example: 3 features and 2 data points
+<!-- ## Teaching example: 3 features and 2 data points -->
 
-Here, I consider what it is like to teach in the boundary game with the following hypotheses:
+<!-- Here, I consider what it is like to teach in the boundary game with the following hypotheses: -->
 
-$$\mathcal{H} = \{111, 011, 001, 000\}$$
+<!-- $$\mathcal{H} = \{111, 011, 001, 000\}$$ -->
 
-### Batch self-teaching
+<!-- ### Batch self-teaching -->
 
-The batch self-teacher selects two different values of $\mathbf{x}$ from the set $\{01, 02, 12\}$, with each of the hypotheses having the possible sets of $\mathbf{y}$ values: $\{00, 01, 10, 11\}$.
+<!-- The batch self-teacher selects two different values of $\mathbf{x}$ from the set $\{01, 02, 12\}$, with each of the hypotheses having the possible sets of $\mathbf{y}$ values: $\{00, 01, 10, 11\}$. -->
 
-We assume a uniform prior over hypotheses and teaching sets:
+<!-- We assume a uniform prior over hypotheses and teaching sets: -->
 
-$$P(h) = 1/4 \quad \forall h$$
+<!-- $$P(h) = 1/4 \quad \forall h$$ -->
 
-$$P(\mathbf{x}) = 1/3 \quad \forall \mathbf{x}$$
+<!-- $$P(\mathbf{x}) = 1/3 \quad \forall \mathbf{x}$$ -->
 
-The likelihood $P(\mathbf{y}|\mathbf{x}, h)$ is the following:
+<!-- The likelihood $P(\mathbf{y}|\mathbf{x}, h)$ is the following: -->
