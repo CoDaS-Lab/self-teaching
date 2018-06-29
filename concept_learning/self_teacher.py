@@ -71,6 +71,10 @@ class SelfTeacher:
         self.learner_posterior = np.divide(self.learner_posterior,
                                            denom, where=denom != 0)
 
+        # set learner posterior to zero where denom = 0
+        # print(np.isclose(denom, 0.0))
+        self.learner_posterior[:, np.isclose(denom, 0)] = 0
+
     def update_self_teaching_posterior(self):
         """Calculates the posterior of self teaching for determining which points
         to actively select using the teaching equations"""
@@ -209,3 +213,53 @@ class SelfTeacher:
                 self.true_hyp_idx]
 
         return self.n_obs, self.posterior_true_hyp, self.first_feature_prob
+
+
+if __name__ == "__main__":
+    np.set_printoptions(suppress=True)
+
+    hyp_space_type = "boundary"
+    n_hyp = 4
+    n_features = 3
+    n_labels = 2
+    sampling = "max"
+
+    # feature, label pairs
+    xs = [0, 0, 1, 1, 2, 2]
+    ys = [0, 1, 0, 1, 0, 1]
+
+    # figure, ax = plt.subplots()
+    for i, (x, y) in enumerate(zip(xs, ys)):
+        print("x: {}, y: {}".format(x, y))
+        st = SelfTeacher(n_features, hyp_space_type, sampling=sampling)
+        st.update_learner_posterior()
+        st.update_self_teaching_posterior()
+
+        self_teacher_prob_one = st.self_teaching_posterior[0, :, 0]
+
+        # print("first feature prob:", st.self_teaching_posterior[0, :, 0])
+
+        # update learner posterior based on a particular observation
+        updated_learner_posterior = st.learner_posterior[:, x, y]
+        print("learner posterior:", updated_learner_posterior)
+
+        # update new learner posterior by broadcasting
+        st.learner_posterior = np.repeat(
+            updated_learner_posterior,
+            n_labels * n_features).reshape(
+                n_hyp, n_features, n_labels)
+
+        st.learner_prior = np.repeat(
+            updated_learner_posterior,
+            n_labels * n_features).reshape(
+                n_hyp, n_features, n_labels)
+
+        st.update_learner_posterior()
+        # print("posterior after one observation")
+        print(st.learner_posterior)
+
+        st.update_self_teaching_posterior()
+
+        self_teacher_prob_two = st.self_teaching_posterior[0, :, 0]
+
+        print("second feature prob:", self_teacher_prob_two)

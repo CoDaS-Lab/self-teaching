@@ -1,4 +1,6 @@
 import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
 import concept_learning.utils as utils
 
 
@@ -39,7 +41,8 @@ class ActiveLearner:
     def likelihood(self, x, y):
         """Calculates the likelihood of observing the datapoint x"""
 
-        assert y == 0 or y == 1
+        # assert np.logical_or(np.isclose(y, 0.0), np.isclose(y, 1.0))
+        # assert y == 0.0 or y == 1.0
 
         lik = np.zeros(len(self.hyp_space))
         for i, hyp in enumerate(self.hyp_space):
@@ -52,7 +55,8 @@ class ActiveLearner:
     def observe(self, x, y):
         """Calculate the posterior based on observing x"""
 
-        assert y == 0 or y == 1
+        # assert np.logical_or(np.isclose(y, 0.0), np.isclose(y, 1.0))
+        # assert y == 0 or y == 1
 
         lik = self.likelihood(x, y)
         posterior = np.array(self.posterior) * np.array(lik)
@@ -64,7 +68,8 @@ class ActiveLearner:
     def update(self, x, y):
         """Updates the model based on observing x using Bayesian inference"""
 
-        assert y == 0 or y == 1
+        # assert np.logical_or(np.isclose(y, 0.0), np.isclose(y, 1.0))
+        # assert y == 0 or y == 1
 
         # lik = self.likelihood(x, y)
         self.posterior = self.observe(x, y)
@@ -143,3 +148,31 @@ class ActiveLearner:
                 self.posterior[self.true_hyp_idx]
 
         return self.n_obs, self.posterior_true_hyp, self.first_feature_prob
+
+
+if __name__ == "__main__":
+    hyp_space_type = "boundary"
+    n_features = 3
+    sampling = "max"
+
+    # feature, label pairs
+    xs = [0, 0, 1, 1, 2, 2]
+    ys = [0, 1, 0, 1, 0, 1]
+
+    x = 0
+    y = 1
+
+    al = ActiveLearner(n_features, hyp_space_type, sampling=sampling)
+    active_learning_prob_one = np.array([
+        al.expected_information_gain(x) for x in range(n_features)])
+
+    # normalize
+    active_learning_prob_one = active_learning_prob_one / \
+        np.sum(active_learning_prob_one)
+
+    # perform update
+    al.update(x=x, y=y)
+    active_learning_prob_two = np.array([
+        al.expected_information_gain(x) for x in range(n_features)])
+
+    print(active_learning_prob_two)
