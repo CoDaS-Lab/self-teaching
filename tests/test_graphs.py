@@ -102,32 +102,6 @@ def test_intervene():
         causal_chain_1.intervened_graph, causal_chain_intervene_2)
 
 
-def test_topological_sort():
-    t = 0.8
-    b = 0.01
-    hyp_space = utils.create_graph_hyp_space(t, b)
-
-    common_cause_2 = hyp_space["common_cause_2"]
-    common_cause_2_topological_sort = np.array([1, 2, 0])
-
-    assert np.array_equal(common_cause_2.topological_sort(),
-                          common_cause_2_topological_sort)
-
-    common_effect_2 = hyp_space["common_effect_2"]
-    common_effect_2_topological_sort = np.array([2, 0, 1])
-
-    assert np.array_equal(common_effect_2.topological_sort(),
-                          common_effect_2_topological_sort)
-
-    # test intervened graph
-    common_effect_2.intervene(1)
-
-    common_effect_2_intervened_topological_sort = np.array([2, 1, 0])
-    assert np.array_equal(common_effect_2_intervened_topological_sort,
-                          common_effect_2.topological_sort(
-                              common_effect_2.intervened_graph))
-
-
 def test_likelihood():
     t = 0.8  # transmission rate
     b = 0.01  # background rate

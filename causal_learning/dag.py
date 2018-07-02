@@ -50,35 +50,6 @@ class DirectedGraph:
         self.intervened_graph[intervened_parents,
                               intervention] = 0
 
-    def topological_sort(self, intervened_graph=None):
-        """Computes the topological sort for a given graph"""
-
-        # create a list of visited nodes
-        visited = [False] * self.n_nodes
-        stack = []
-
-        # run topological sort over each node
-        for i in range(self.n_nodes):
-            if not visited[i]:
-                if intervened_graph is not None:
-                    self.topological_sort_node(
-                        i, visited, stack, intervened_graph)
-                else:
-                    self.topological_sort_node(
-                        i, visited, stack, self.graph)
-
-        return stack
-
-    def topological_sort_node(self, node, visited, stack, graph):
-        # update state to visited
-        visited[node] = True
-
-        for i in self.get_children(node, graph):
-            if not visited[i]:
-                self.topological_sort_node(i, visited, stack, graph)
-
-        stack.insert(0, node)
-
     def observation_likelihood(self, observation):
         """Calculate the likelihood of a given observation"""
 
@@ -93,12 +64,14 @@ class DirectedGraph:
         observed_nodes = np.where(observation != 0)[0]
 
         # subtract one since 1 = off, 2 = on
-        self.intervened_observation[observed_nodes] = observation[observed_nodes] - 1
+        self.intervened_observation[observed_nodes] = \
+            observation[observed_nodes] - 1
 
         for node in observed_nodes:
             node_parents = self.get_parents(node, self.intervened_graph)
-            observation_idx = np.append(self.intervened_observation[node_parents],
-                                        self.intervened_observation[node]).astype(int)
+            observation_idx = np.append(
+                self.intervened_observation[node_parents],
+                self.intervened_observation[node]).astype(int)
             likelihood = likelihood * \
                 self.cpds[node][tuple(observation_idx)]
 
