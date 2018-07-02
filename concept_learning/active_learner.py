@@ -5,8 +5,8 @@ import concept_learning.utils as utils
 
 
 class ActiveLearner:
-    def __init__(self, n_features, hyp_space_type,
-                 true_hyp=None, sampling="max"):
+    def __init__(self, n_features=3, hyp_space_type="boundary",
+                 sampling="max", true_hyp=None):
         assert(n_features > 0)
 
         self.d = []  # observed data points

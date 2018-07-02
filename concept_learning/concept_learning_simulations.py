@@ -1,6 +1,5 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from concept_learning import utils
 from concept_learning.active_learner import ActiveLearner
 from concept_learning.self_teacher import SelfTeacher
 
@@ -19,7 +18,7 @@ if __name__ == "__main__":
 
     for i, (x, y) in enumerate(zip(xs, ys)):
         # get predictions from active learning model
-        al = ActiveLearner(n_features, hyp_space_type, sampling=sampling)
+        al = ActiveLearner(n_features, hyp_space_type, sampling)
         active_learning_prob_one = np.array([
             al.expected_information_gain(x) for x in range(n_features)])
 
@@ -39,7 +38,7 @@ if __name__ == "__main__":
         active_learning_prob_two[np.isclose(denom, 0)] = 0
 
         # get predictions from self-teaching model
-        st = SelfTeacher(n_features, hyp_space_type, sampling=sampling)
+        st = SelfTeacher(n_features, hyp_space_type, sampling)
         st.update_learner_posterior()
         st.update_self_teaching_posterior()
         self_teacher_prob_one = st.self_teaching_posterior[0, :, 0]
@@ -63,10 +62,10 @@ if __name__ == "__main__":
         # plt.plot(np.arange(1, 4), self_teacher_prob_one,
         #          color='orange',
         #          label="Self-teacher first feature prob")
-        plt.plot(np.arange(3), active_learning_prob_one,
+        plt.plot(np.arange(3), active_learning_prob_two,
                  color='red',
                  label="Active learner second feature prob")
-        plt.plot(np.arange(3), self_teacher_prob_one,
+        plt.plot(np.arange(3), self_teacher_prob_two,
                  color='blue',
                  label="Self-teacher second feature prob")
         axes = plt.gca()
@@ -76,6 +75,6 @@ if __name__ == "__main__":
         handles, labels = ax.get_legend_handles_labels()
 
     plt.suptitle(
-        "Comparing predictions from the Active Learning (red) and Self-Teaching (blue) models\nfor selecting the first feature in the concept learning game")
+        "Comparing predictions from the Active Learning (red) and Self-Teaching (blue) models\nfor selecting the second feature in the concept learning game")
     figure.legend(handles, labels, loc='lower center')
     plt.show()

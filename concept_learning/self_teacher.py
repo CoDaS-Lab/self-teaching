@@ -3,8 +3,8 @@ import concept_learning.utils as utils
 
 
 class SelfTeacher:
-    def __init__(self, n_features, hyp_space_type,
-                 true_hyp=None, sampling="max"):
+    def __init__(self, n_features=3, hyp_space_type="boundary",
+                 sampling="max", true_hyp=None):
         self.n_features = n_features
         self.n_labels = 2
         self.observed_features = np.array([])
