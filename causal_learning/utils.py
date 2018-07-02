@@ -1,5 +1,6 @@
 import numpy as np
-from causal_learning.dag import DirectedGraph
+from causal_learning import dag
+from causal_learning.graph_teacher import GraphTeacher
 
 
 def permute_likelihood(lik, new_lik_order):
@@ -46,122 +47,69 @@ def create_graph_hyp_space(t=0.8, b=0.01):
 
     # enumerate all graphs with three nodes
     common_cause_1 = np.array([[0, 1, 1], [0, 0, 0], [0, 0, 0]])
-    common_cause_1_lik = np.array(
-        [((1-t)*(1-b))**2, (1-t)*(1-b)*(t + (1-t)*b), (t + (1-t)*b)*(1-t)*(1-b), (t + (1-t)*b)**2,
-         (1-b)**2, (1-b)*b, (1-b)**2, (1-b)*b,
-         b*(1-t)*(1-b), b*(t + (1-t)*b), b*(1-t)*(1-b), b*(t + (1-t)*b)])
+    common_cause_1_cpd = [np.array([1-b, b]),
+                          np.array([[1-b, b], [(1-t)*(1-b), t + (1-t)*b]]),
+                          np.array([[1-b, b], [(1-t)*(1-b), t + (1-t)*b]])]
 
     common_cause_2 = np.array([[0, 0, 0], [1, 0, 1], [0, 0, 0]])
-    common_cause_2_lik = permute_likelihood(common_cause_1_lik, (2, 1, 3))
-    common_cause_2_lik[7], common_cause_2_lik[10] = \
-        common_cause_2_lik[10], common_cause_2_lik[7]
+    common_cause_2_cpd = [common_cause_1_cpd[i] for i in [1, 0, 2]]
 
     common_cause_3 = np.array([[0, 0, 0], [0, 0, 0], [1, 1, 0]])
-    common_cause_3_lik = permute_likelihood(common_cause_1_lik, (3, 1, 2))
-    common_cause_3_lik[1], common_cause_3_lik[2] = \
-        common_cause_3_lik[2], common_cause_3_lik[1]
-    common_cause_3_lik[5], common_cause_3_lik[8] = \
-        common_cause_3_lik[8], common_cause_3_lik[5]
+    common_cause_3_cpd = [common_cause_1_cpd[i] for i in [1, 2, 0]]
 
     common_effect_1 = np.array([[0, 0, 1], [0, 0, 1], [0, 0, 0]])
-    common_effect_1_lik = np.array(
-        [(1-b)*(1-t)*(1-b), (1-b)*(t + (1-t)*b), b*(1-t)*(1-t)*(1-b),
-         b*(t*(1-t) + (1-t)*t + t*t + b*((1-t)**2)),
-         (1-b)*(1-t)*(1-b), (1-b)*(t + (1-t)*b), (1-b)*(1-b), (1-b)*b,
-         b*(1-t)*(1-t)*(1-b), b*(t*(1-t) + (1-t)*t + t*t + b*((1-t)**2)), (1-b)*b, b*b])
+    common_effect_1_cpd = [np.array([1-b, b]),
+                           np.array([1-b, b]),
+                           np.array([[[1-b, b], [(1-t)*(1-b), (t + (1-t)*b)]],
+                                     [[(1-t)*(1-b), (t + (1-t)*b)],
+                                      [(1-t)*(1-b)*(1-t),
+                                       (t)**2 + (t*(1-t))*2 + b*(1-t)**2]]])]
 
     common_effect_2 = np.array([[0, 1, 0], [0, 0, 0], [0, 1, 0]])
-    common_effect_2_lik = permute_likelihood(common_effect_1_lik, (3, 1, 2))
-    common_effect_2_lik[1], common_effect_2_lik[2] = \
-        common_effect_2_lik[2], common_effect_2_lik[1]
+    common_effect_2_cpd = [common_effect_1_cpd[i] for i in [0, 2, 1]]
 
     common_effect_3 = np.array([[0, 0, 0], [1, 0, 0], [1, 0, 0]])
-    common_effect_3_lik = permute_likelihood(common_effect_1_lik, (2, 3, 1))
-    common_effect_3_lik[5], common_effect_3_lik[8] = \
-        common_effect_3_lik[8], common_effect_3_lik[5]
-    common_effect_3_lik[7], common_effect_3_lik[10] = \
-        common_effect_3_lik[10], common_effect_3_lik[7]
+    common_effect_3_cpd = [common_effect_1_cpd[i] for i in [2, 0, 1]]
 
     causal_chain_1 = np.array([[0, 1, 0], [0, 0, 1], [0, 0, 0]])
-    causal_chain_1_lik = np.array(
-        [(1-t)*(1-b)*(1-b), (1-t)*(1-b)*b, (t + (1-t)*b)*(1-t)*(1-b), (t + (1-t)*b)**2,
-         (1-b)*(1-t)*(1-b), (1-b)*(t + (1-t)*b), (1-b)**2, (1-b)*b,
-         b*(1 - t)*(1-b), b*(t + (1-t)*b), b*(1-t)*(1-b), b*(t + (1-t)*b)]
-    )
+    causal_chain_1_cpd = [np.array([1-b, b]),
+                          np.array([[1-b, b], [(1-t)*(1-b), t + (1-t)*b]]),
+                          np.array([[1-b, b], [(1-t)*(1-b), t + (1-t)*b]])]
 
     causal_chain_2 = np.array([[0, 0, 1], [0, 0, 0], [0, 1, 0]])
-    causal_chain_2_lik = permute_likelihood(causal_chain_1_lik, (1, 3, 2))
-    causal_chain_2_lik[1], causal_chain_2_lik[2] = \
-        causal_chain_2_lik[2], causal_chain_2_lik[1]
+    causal_chain_2_cpd = [causal_chain_1_cpd[i] for i in [0, 2, 1]]
 
     causal_chain_3 = np.array([[0, 0, 0], [0, 0, 1], [1, 0, 0]])
-    causal_chain_3_lik = permute_likelihood(causal_chain_1_lik, (2, 3, 1))
-    causal_chain_3_lik[5], causal_chain_3_lik[8] = \
-        causal_chain_3_lik[8], causal_chain_3_lik[5]
-    causal_chain_3_lik[7], causal_chain_3_lik[10] = \
-        causal_chain_3_lik[10], causal_chain_3_lik[7]
+    causal_chain_3_cpd = [causal_chain_1_cpd[i] for i in [1, 0, 2]]
 
-    causal_chain_4 = np.array([[0, 0, 1], [1, 0, 0], [1, 0, 0]])
-    causal_chain_4_lik = permute_likelihood(causal_chain_1_lik, (2, 1, 3))
-    causal_chain_4_lik[7], causal_chain_4_lik[10] = \
-        causal_chain_4_lik[10], causal_chain_4_lik[7]
+    causal_chain_4 = np.array([[0, 0, 1], [1, 0, 0], [0, 0, 0]])
+    causal_chain_4_cpd = [causal_chain_1_cpd[i] for i in [2, 0, 1]]
 
     causal_chain_5 = np.array([[0, 1, 0], [0, 0, 0], [1, 0, 0]])
-    causal_chain_5_lik = permute_likelihood(causal_chain_1_lik, (3, 1, 2))
-    causal_chain_5_lik[1], causal_chain_5_lik[2] = \
-        causal_chain_5_lik[2], causal_chain_5_lik[1]
-    causal_chain_5_lik[5], causal_chain_5_lik[8] = \
-        causal_chain_5_lik[8], causal_chain_5_lik[5]
+    causal_chain_5_cpd = [causal_chain_1_cpd[i] for i in [1, 2, 0]]
 
     causal_chain_6 = np.array([[0, 0, 0], [1, 0, 0], [0, 1, 0]])
-    causal_chain_6_lik = permute_likelihood(causal_chain_1_lik, (3, 2, 1))
-    causal_chain_6_lik[1], causal_chain_6_lik[2] = \
-        causal_chain_6_lik[2], causal_chain_6_lik[1]
-    causal_chain_6_lik[5], causal_chain_6_lik[8] = \
-        causal_chain_6_lik[8], causal_chain_6_lik[5]
-    causal_chain_6_lik[7], causal_chain_6_lik[10] = \
-        causal_chain_6_lik[10], causal_chain_6_lik[7]
+    causal_chain_6_cpd = [causal_chain_1_cpd[i] for i in [2, 1, 0]]
 
     single_link_1 = np.array([[0, 1, 0], [0, 0, 0], [0, 0, 0]])
-    single_link_lik_1 = np.array([(1-t)*(1-b)*(1-b), (1-t)*(1-b)*b,
-                                  (t + (1-t)*b)*(1-b), (t + (1-t)*b)*b,
-                                  (1-b)*(1-b), (1-b)*b,
-                                  (1-b)*(1-b), (1-b)*b,
-                                  b*(1-b), b*b,
-                                  b*(1-t)*(1-b), b*(t + (1-t)*b)])
+    single_link_1_cpd = [np.array([1-b, b]),
+                         np.array([[1-b, b], [(1-t)*(1-b), t + (1-t)*b]]),
+                         np.array([1-b, b])]
 
     single_link_2 = np.array([[0, 0, 1], [0, 0, 0], [0, 0, 0]])
-    single_link_lik_2 = np.array([(1-t)*(1-b)*(1-b), (t + (1-t)*b)*(1-b), b*(1-t)*(1-b),
-                                  b*(t + (1-t)*b), (1-b)*(1-b), (1-b)*b,
-                                  (1-b)*(1-b), (1-b)*b, b*(1-t)*(1-b),
-                                  b*(t + (1-t)*b), b*(1-b), b*b])
+    single_link_2_cpd = [single_link_1_cpd[i] for i in [0, 2, 1]]
 
     single_link_3 = np.array([[0, 0, 0], [1, 0, 0], [0, 0, 0]])
-    single_link_lik_3 = np.array([(1-b)*(1-b), (1-b)*b, b*(1-b),
-                                  b*b, (1-t)*(1-b)*(1-b), (1-t)*(1-b)*b,
-                                  (1-b)*(1-b), (1-t)*(1-b) *
-                                  b, (t + (1-t)*b)*(1-b),
-                                  (t + (1-t)*b)*b, b*(1-b), (t + (1-t)*b)*b])
+    single_link_3_cpd = [single_link_1_cpd[i] for i in [1, 0, 2]]
 
     single_link_4 = np.array([[0, 0, 0], [0, 0, 1], [0, 0, 0]])
-    single_link_lik_4 = np.array([(1-b)*(1-b), (1-b)*b, b*(1-t)*(1-b),
-                                  b*(t + (1-t)*b), (1-b)*(1-t) *
-                                  (1-b), (1-b)*(t + (1-t)*b),
-                                  (1-b)*(1-b), (1-b)*b, b*(1-t)*(1-b),
-                                  b*(t + (1-t)*b), b*(1-b), b*b])
+    single_link_4_cpd = [single_link_1_cpd[i] for i in [2, 0, 1]]
 
     single_link_5 = np.array([[0, 0, 0], [0, 0, 0], [1, 0, 0]])
-    single_link_lik_5 = np.array([(1-b)*(1-b), (1-b)*b, b*(1-b),
-                                  b*b, (1-b)*(1-b), (1-t)*(1-b)*b,
-                                  (1-t)*(1-b)*(1-b), (1-t)*(1-b)*b, b*(1-b),
-                                  (t + (1-t)*b)*b, (t + (1-t)*b)*(1-b), (t + (1-t)*b)*b])
+    single_link_5_cpd = [single_link_1_cpd[i] for i in [1, 2, 0]]
 
     single_link_6 = np.array([[0, 0, 0], [0, 0, 0], [0, 1, 0]])
-    single_link_lik_6 = np.array([(1-b)*(1-b), (1-t)*(1-b)*b, b*(1-b),
-                                  b*(t + (1-t)*b), (1-b)*(1-b), (1-b)*b,
-                                  (1-b)*(1-t)*(1-b), (1-b) *
-                                  (t + (1-t)*b), b*(1-b),
-                                  b*b, b*(1-t)*(1-b), b*(t + (1-t)*b)])
+    single_link_6_cpd = [single_link_1_cpd[i] for i in [2, 1, 0]]
 
     graph_names = ["common_cause_1", "common_cause_2", "common_cause_3",
                    "common_effect_1", "common_effect_2", "common_effect_3",
@@ -177,16 +125,16 @@ def create_graph_hyp_space(t=0.8, b=0.01):
               single_link_1, single_link_2, single_link_3,
               single_link_4, single_link_5, single_link_6]
 
-    likelihoods = [common_cause_1_lik, common_cause_2_lik, common_cause_3_lik,
-                   common_effect_1_lik, common_effect_2_lik, common_effect_3_lik,
-                   causal_chain_1_lik, causal_chain_2_lik, causal_chain_3_lik,
-                   causal_chain_4_lik, causal_chain_5_lik, causal_chain_6_lik,
-                   single_link_lik_1, single_link_lik_2, single_link_lik_3,
-                   single_link_lik_4, single_link_lik_5, single_link_lik_6]
+    cpds = [common_cause_1_cpd, common_cause_2_cpd, common_cause_3_cpd,
+            common_effect_1_cpd, common_effect_2_cpd, common_effect_3_cpd,
+            causal_chain_1_cpd, causal_chain_2_cpd, causal_chain_3_cpd,
+            causal_chain_4_cpd, causal_chain_5_cpd, causal_chain_6_cpd,
+            single_link_1_cpd, single_link_2_cpd, single_link_3_cpd,
+            single_link_4_cpd, single_link_5_cpd, single_link_6_cpd]
 
-    hyp_space = {graph_names: DirectedGraph(graph, likelihood, t, b)
-                 for (graph_names, graph, likelihood) in
-                 zip(graph_names, graphs, likelihoods)}
+    hyp_space = {graph_names: dag.DirectedGraph(graph, cpd, t, b)
+                 for (graph_names, graph, cpd) in
+                 zip(graph_names, graphs, cpds)}
 
     return hyp_space
 
@@ -281,10 +229,15 @@ def create_active_learning_hyp_space(t=0.8, b=0.0):
 
 
 if __name__ == "__main__":
+    np.set_printoptions(suppress=True)
     t = 0.8
-    b = 0.0
-    hyp_space = create_graph_hyp_space(t=t, b=b)
+    b = 0.01
+    graphs = create_graph_hyp_space(t=t, b=b)
+    print(graphs)
+    for (k, g) in graphs.items():
+        print(k)
+        print(g.likelihood())
 
     # check likelihoods sum to 3.0
-    for graph_name, graph in hyp_space.items():
-        print(graph.lik)
+    # graph_teacher.likelihood()
+    # print(graph_teacher.lik)

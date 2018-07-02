@@ -36,6 +36,10 @@ if __name__ == "__main__":
     ax.set_xticks([])
     ax.set_yticks([])
 
+    points_one = [(0.33, 0.33, 0.33), (0.5, 0.5, 0)]
+    points_two = [(0.33, 0.33, 0.33), (0.5, 0, 0.5)]
+    points_three = [(0.33, 0.33, 0.33), (0, 0.5, 0.5)]
+
     for i in range(len(ig_model_predictions)):
         # make ternary plot
         scale = 1
@@ -48,11 +52,15 @@ if __name__ == "__main__":
                     color='red', label="Information Gain")
         tax.scatter([self_teaching_model_predictions[i]],
                     marker='o', color='blue', label="Self-Teaching")
+        tax.line(points_one[0], points_one[1], color='black', linestyle=':')
+        tax.line(points_two[0], points_two[1], color='black', linestyle=':')
+        tax.line(points_three[0], points_three[1],
+                 color='black', linestyle=':')
         tax.clear_matplotlib_ticks()
         ax.set_frame_on(False)
         handles, labels = ax.get_legend_handles_labels()
 
     figure.suptitle(
-        "Comparing predictions from the Information Gain (blue) and Self-Teaching (red) models")
+        "Comparing predictions from the Information Gain (red) and Self-Teaching (blue) models")
     figure.legend(handles, labels, loc='lower center')
     plt.show()

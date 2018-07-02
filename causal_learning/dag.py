@@ -1,115 +1,119 @@
-from collections import deque
+from causal_learning import utils
 import numpy as np
 
 
 class DirectedGraph:
-    def __init__(self, edges, lik=None, transmission_rate=0.9, background_rate=0.05):
-        self.adjacency_matrix = edges
-        self.n = self.adjacency_matrix.shape[0]
-        self.n_actions = self.n
-        self.n_observations = 2 ** self.n
-        self.transmission_rate = transmission_rate
-        self.background_rate = background_rate
+    def __init__(self, edges, cpds, t=0.8, b=0.01):
+        self.graph = edges
+        self.n_nodes = self.graph.shape[0]
+        self.n_actions = self.n_nodes
+        self.n_observations = 2 ** self.n_nodes
+        self.t = t
+        self.b = b
 
+        self.nodes = np.arange(self.n_nodes)
         self.observations = np.array([[0, 1, 1], [0, 1, 2],
                                       [0, 2, 1], [0, 2, 2],
                                       [1, 0, 1], [1, 0, 2],
                                       [1, 1, 0], [1, 2, 0],
                                       [2, 0, 1], [2, 0, 2],
                                       [2, 1, 0], [2, 2, 0]])
+        self.cpds = cpds
 
-        if lik is None:
-            self.lik = np.zeros(len(self.observations))
-        else:
-            self.lik = lik
+        assert self.n_nodes >= 0
+        assert self.t >= 0.0
+        assert self.b >= 0.0
 
-        assert self.n >= 0
-        assert self.transmission_rate >= 0.0
-        assert self.background_rate >= 0.0
-
-    def get_parents(self, node):
+    def get_parents(self, node, graph):
         """Calculate the parents of a given node"""
-        return np.flatnonzero(self.adjacency_matrix[:, node])
+        return np.flatnonzero(graph[:, node])
 
-    def get_children(self, node):
+    def get_children(self, node, graph):
         """Calculate the children of a given node"""
-        return np.flatnonzero(self.adjacency_matrix[node])
+        return np.flatnonzero(graph[node])
 
-    # def intervene(self, node):
-    #     """Calculate the outcome from intervening on a particular node"""
+    def intervene(self, intervention):
+        """Takes a given observation and intervenes on the node"""
 
-    #     outcomes = np.zeros(self.n)  # array to store outcomes
-    #     outcomes[node] = 1.0  # set intervened node to be on
+        # check that intervention is valid
+        assert intervention >= 0 and intervention < self.n_nodes
 
-    #     # temporarily remove edge between node and parent
-    #     intervened_parents = self.get_parents(node)
-    #     self.adjacency_matrix[intervened_parents, node] = 0
+        # set intervened node to be one
+        self.intervened_observation = np.zeros(self.n_nodes)
+        self.intervened_observation[intervention] = 1
 
-    #     q = deque()  # create queue to store nodes
+        # create intervened adjacency matrix
+        self.intervened_graph = self.graph.copy()
 
-    #     # set root nodes to be bg rate and add to queue
-    #     # root notes have no parents and are not the node intervened on
-    #     for i in range(self.n):
-    #         if len(self.get_parents(i)) == 0 and i != node:
-    #             outcomes[i] = self.background_rate
-    #             q.append(i)
+        # remove edges from parents to intervened nodes
+        intervened_parents = self.get_parents(intervention, self.graph)
+        self.intervened_graph[intervened_parents,
+                              intervention] = 0
 
-    #     # append children of intervened node to queue
-    #     children = self.get_children(node)
-    #     for child in children:
-    #         q.append(child)  # append children of nodes to queue
+    def topological_sort(self, intervened_graph=None):
+        """Computes the topological sort for a given graph"""
 
-    #     while len(q) is not 0:
-    #         curr_node = q.popleft()  # remove first node from queue
+        # create a list of visited nodes
+        visited = [False] * self.n_nodes
+        stack = []
 
-    #         # calculate probability of turning on
-    #         parents = self.get_parents(curr_node)
-    #         outcomes[curr_node] = np.sum(outcomes[parents]) * \
-    #             self.transmission_rate + self.background_rate
+        # run topological sort over each node
+        for i in range(self.n_nodes):
+            if not visited[i]:
+                if intervened_graph is not None:
+                    self.topological_sort_node(
+                        i, visited, stack, intervened_graph)
+                else:
+                    self.topological_sort_node(
+                        i, visited, stack, self.graph)
 
-    #         # append children to queue
-    #         children = self.get_children(curr_node)
-    #         for child in children:
-    #             q.append(child)
+        return stack
 
-    #     # add edges back in from parents to intervened node
-    #     self.adjacency_matrix[intervened_parents, node] = 1
+    def topological_sort_node(self, node, visited, stack, graph):
+        # update state to visited
+        visited[node] = True
 
-    #     # set any outcomes greater than 1 to 1
-    #     outcomes[outcomes > 1.0] = 1.0
+        for i in self.get_children(node, graph):
+            if not visited[i]:
+                self.topological_sort_node(i, visited, stack, graph)
 
-    #     return outcomes
+        stack.insert(0, node)
 
-    # def likelihood(self):
-    #     """Calculate the likelihood of a node being turned on?"""
-    #     outcomes = np.zeros((self.n, self.n))
-    #     for i in range(self.n):
-    #         outcomes[i] = self.intervene(i)
+    def observation_likelihood(self, observation):
+        """Calculate the likelihood of a given observation"""
 
-    #     # use outcomes matrix to determine likelihood
-    #     lik = np.zeros((self.n_observations, self.n_actions))
-    #     for i in range(self.n_observations):
-    #         for j in range(self.n_actions):
-    #             observation = self.observations[i]
-    #             outcome = outcomes[j]
-    #             new_outcome = np.zeros_like(outcome)
+        # determine which node to intervene on
+        intervened_node = np.where(observation == 0)[0][0]
 
-    #             for k, o in enumerate(observation):
-    #                 if np.isclose(o, 0):
-    #                     new_outcome[k] = 1 - outcome[k]
-    #                 else:
-    #                     new_outcome[k] = outcome[k]
+        # apply intervention
+        self.intervene(intervened_node)
 
-    #             lik[i, j] = np.prod(new_outcome)
+        likelihood = 1
 
-    #     # check likelihoods for each action sum to 1
-    #     np.all(np.sum(lik, axis=0) == 1)
+        observed_nodes = np.where(observation != 0)[0]
 
-    #     # flatten likelihood into a single dimension
-    #     lik = np.array([
-    #         lik[4, 0], lik[5, 0], lik[6, 0], lik[7, 0],
-    #         lik[2, 1], lik[3, 1], lik[1, 2], lik[3, 2],
-    #         lik[6, 1], lik[7, 1], lik[5, 2], lik[7, 2]
-    #     ])
+        # subtract one since 1 = off, 2 = on
+        self.intervened_observation[observed_nodes] = observation[observed_nodes] - 1
 
-    #     return lik
+        for node in observed_nodes:
+            node_parents = self.get_parents(node, self.intervened_graph)
+            observation_idx = np.append(self.intervened_observation[node_parents],
+                                        self.intervened_observation[node]).astype(int)
+            likelihood = likelihood * \
+                self.cpds[node][tuple(observation_idx)]
+
+        return likelihood
+
+    def likelihood(self):
+        lik = [self.observation_likelihood(obs) for obs in self.observations]
+        return lik
+
+
+if __name__ == "__main__":
+    t = 0.8
+    b = 0.01
+    hyp_space = utils.create_teaching_hyp_space(t, b)
+
+    for i in range(len(hyp_space)):
+        print(i)
+        print(hyp_space[i].likelihood())

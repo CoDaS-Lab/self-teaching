@@ -7,49 +7,125 @@ from causal_learning.graph_active_learner import GraphActiveLearner
 
 
 def test_get_parents():
-    common_cause = np.array([[0, 1, 1], [0, 0, 0], [0, 0, 0]])
-    dag_one = DirectedGraph(common_cause)
+    hyp_space = utils.create_graph_hyp_space()
 
-    assert np.array_equal(dag_one.get_parents(0), np.array([]))
-    assert np.array_equal(dag_one.get_parents(1), np.array([0]))
-    assert np.array_equal(dag_one.get_parents(2), np.array([0]))
+    dag_one = hyp_space["common_cause_1"]
 
-    common_effect = np.array([[0, 0, 1], [0, 0, 1], [0, 0, 0]])
-    dag_two = DirectedGraph(common_effect)
+    assert np.array_equal(dag_one.get_parents(0, dag_one.graph), np.array([]))
+    assert np.array_equal(dag_one.get_parents(1, dag_one.graph), np.array([0]))
+    assert np.array_equal(dag_one.get_parents(2, dag_one.graph), np.array([0]))
 
-    assert np.array_equal(dag_two.get_parents(0), np.array([]))
-    assert np.array_equal(dag_two.get_parents(1), np.array([]))
-    assert np.array_equal(dag_two.get_parents(2), np.array([0, 1]))
+    dag_two = hyp_space["common_effect_1"]
 
-    causal_chain = np.array([[0, 1, 0], [0, 0, 1], [0, 0, 0]])
-    dag_three = DirectedGraph(causal_chain)
+    assert np.array_equal(dag_two.get_parents(0, dag_two.graph), np.array([]))
+    assert np.array_equal(dag_two.get_parents(1, dag_two.graph), np.array([]))
+    assert np.array_equal(dag_two.get_parents(
+        2, dag_two.graph), np.array([0, 1]))
 
-    assert np.array_equal(dag_three.get_parents(0), np.array([]))
-    assert np.array_equal(dag_three.get_parents(1), np.array([0]))
-    assert np.array_equal(dag_three.get_parents(2), np.array([1]))
+    dag_three = hyp_space["causal_chain_1"]
+
+    assert np.array_equal(dag_three.get_parents(
+        0, dag_three.graph), np.array([]))
+    assert np.array_equal(dag_three.get_parents(
+        1, dag_three.graph), np.array([0]))
+    assert np.array_equal(dag_three.get_parents(
+        2, dag_three.graph), np.array([1]))
 
 
 def test_get_children():
-    common_cause = np.array([[0, 1, 1], [0, 0, 0], [0, 0, 0]])
-    dag_one = DirectedGraph(common_cause)
+    hyp_space = utils.create_graph_hyp_space()
 
-    assert np.array_equal(dag_one.get_children(0), np.array([1, 2]))
-    assert np.array_equal(dag_one.get_children(1), np.array([]))
-    assert np.array_equal(dag_one.get_children(2), np.array([]))
+    dag_one = hyp_space["common_cause_1"]
 
-    common_effect = np.array([[0, 0, 1], [0, 0, 1], [0, 0, 0]])
-    dag_two = DirectedGraph(common_effect)
+    assert np.array_equal(dag_one.get_children(
+        0, dag_one.graph), np.array([1, 2]))
+    assert np.array_equal(dag_one.get_children(1, dag_one.graph), np.array([]))
+    assert np.array_equal(dag_one.get_children(2, dag_one.graph), np.array([]))
 
-    assert np.array_equal(dag_two.get_children(0), np.array([2]))
-    assert np.array_equal(dag_two.get_children(1), np.array([2]))
-    assert np.array_equal(dag_two.get_children(2), np.array([]))
+    dag_two = hyp_space["common_effect_1"]
 
-    causal_chain = np.array([[0, 1, 0], [0, 0, 1], [0, 0, 0]])
-    dag_three = DirectedGraph(causal_chain)
+    assert np.array_equal(dag_two.get_children(
+        0, dag_two.graph), np.array([2]))
+    assert np.array_equal(dag_two.get_children(
+        1, dag_two.graph), np.array([2]))
+    assert np.array_equal(dag_two.get_children(2, dag_two.graph), np.array([]))
 
-    assert np.array_equal(dag_three.get_children(0), np.array([1]))
-    assert np.array_equal(dag_three.get_children(1), np.array([2]))
-    assert np.array_equal(dag_three.get_children(2), np.array([]))
+    dag_three = hyp_space["causal_chain_1"]
+
+    assert np.array_equal(dag_three.get_children(
+        0, dag_three.graph), np.array([1]))
+    assert np.array_equal(dag_three.get_children(
+        1, dag_three.graph), np.array([2]))
+    assert np.array_equal(dag_three.get_children(
+        2, dag_three.graph), np.array([]))
+
+
+def test_intervene():
+    t = 0.8
+    b = 0.01
+    hyp_space = utils.create_graph_hyp_space(t, b)
+
+    common_effect_1 = hyp_space["common_effect_1"]
+
+    common_effect_intervene_0 = np.array([[0, 0, 1], [0, 0, 1], [0, 0, 0]])
+    common_effect_intervene_1 = np.array([[0, 0, 1], [0, 0, 1], [0, 0, 0]])
+    common_effect_intervene_2 = np.array([[0, 0, 0], [0, 0, 0], [0, 0, 0]])
+
+    common_effect_1.intervene(0)
+    assert np.array_equal(
+        common_effect_1.intervened_graph, common_effect_intervene_0)
+
+    common_effect_1.intervene(1)
+    assert np.array_equal(
+        common_effect_1.intervened_graph, common_effect_intervene_1)
+
+    common_effect_1.intervene(2)
+    assert np.array_equal(
+        common_effect_1.intervened_graph, common_effect_intervene_2)
+
+    causal_chain_1 = hyp_space["causal_chain_1"]
+
+    causal_chain_intervene_0 = np.array([[0, 1, 0], [0, 0, 1], [0, 0, 0]])
+    causal_chain_intervene_1 = np.array([[0, 0, 0], [0, 0, 1], [0, 0, 0]])
+    causal_chain_intervene_2 = np.array([[0, 1, 0], [0, 0, 0], [0, 0, 0]])
+
+    causal_chain_1.intervene(0)
+    assert np.array_equal(
+        causal_chain_1.intervened_graph, causal_chain_intervene_0)
+
+    causal_chain_1.intervene(1)
+    assert np.array_equal(
+        causal_chain_1.intervened_graph, causal_chain_intervene_1)
+
+    causal_chain_1.intervene(2)
+    assert np.array_equal(
+        causal_chain_1.intervened_graph, causal_chain_intervene_2)
+
+
+def test_topological_sort():
+    t = 0.8
+    b = 0.01
+    hyp_space = utils.create_graph_hyp_space(t, b)
+
+    common_cause_2 = hyp_space["common_cause_2"]
+    common_cause_2_topological_sort = np.array([1, 2, 0])
+
+    assert np.array_equal(common_cause_2.topological_sort(),
+                          common_cause_2_topological_sort)
+
+    common_effect_2 = hyp_space["common_effect_2"]
+    common_effect_2_topological_sort = np.array([2, 0, 1])
+
+    assert np.array_equal(common_effect_2.topological_sort(),
+                          common_effect_2_topological_sort)
+
+    # test intervened graph
+    common_effect_2.intervene(1)
+
+    common_effect_2_intervened_topological_sort = np.array([2, 1, 0])
+    assert np.array_equal(common_effect_2_intervened_topological_sort,
+                          common_effect_2.topological_sort(
+                              common_effect_2.intervened_graph))
 
 
 def test_likelihood():
@@ -85,7 +161,7 @@ def test_likelihood():
 
     graphs = utils.create_teaching_hyp_space(t=t, b=b)
     graph_teacher = GraphTeacher(graphs)
-    graph_teacher.likelihood()
+    print(graph_teacher.likelihood())
 
     assert np.all(np.isclose(graph_teacher.lik, lik))
 

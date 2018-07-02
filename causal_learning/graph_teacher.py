@@ -44,7 +44,7 @@ class GraphTeacher:
                              self.n_observations))
 
         for i, h in enumerate(self.hyp):
-            self.lik[:, i] = h.lik
+            self.lik[:, i] = h.likelihood()
 
         assert np.isclose(np.sum(self.lik), 36.0)
 

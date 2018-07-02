@@ -48,7 +48,7 @@ class GraphSelfTeacher:
                         self.n_observations))
 
         for i, h in enumerate(self.hyp):
-            lik[i] = h.lik
+            lik[i] = h.likelihood()
 
         # the likelihood should sum to 3.0
         assert np.allclose(np.sum(lik, axis=1), 3.0)
