@@ -4,6 +4,7 @@ from causal_learning import utils
 from causal_learning.dag import DirectedGraph
 from causal_learning.graph_teacher import GraphTeacher
 from causal_learning.graph_active_learner import GraphActiveLearner
+from causal_learning.graph_positive_test_strategy import GraphPositiveTestStrategy
 
 
 def test_get_parents():
@@ -216,3 +217,37 @@ def test_graph_active_learner_three():
     true_eig = np.array([0.0, 0.0, 1.0])
 
     assert np.allclose(true_eig, gal_three.expected_information_gain())
+
+
+def test_graph_positive_test_strategy():
+    t = 0.8
+    b = 0.0
+
+    active_learning_problems = utils.create_active_learning_hyp_space(t, b)
+    active_learning_problem_one = active_learning_problems[0]
+    active_learning_problem_one_probs = np.array([0.5, 0.5, 0])
+
+    active_learning_problem_two = active_learning_problems[25]
+    active_learning_problem_two_probs = np.array([0.4, 0.2, 0.4])
+
+    active_learning_problem_three = active_learning_problems[20]
+    active_learning_problem_three_probs = np.array([0.5, 0.25, 0.25])
+
+    active_learning_problem_four = active_learning_problems[13]
+    active_learning_problem_four_probs = np.array([2/3, 0.0, 1/3])
+
+    graph_pts_one = GraphPositiveTestStrategy(active_learning_problem_one)
+    assert np.all(np.isclose(graph_pts_one.positive_test_strategy(),
+                             active_learning_problem_one_probs))
+
+    graph_pts_two = GraphPositiveTestStrategy(active_learning_problem_two)
+    assert np.all(np.isclose(graph_pts_two.positive_test_strategy(),
+                             active_learning_problem_two_probs))
+
+    graph_pts_three = GraphPositiveTestStrategy(active_learning_problem_three)
+    assert np.all(np.isclose(graph_pts_three.positive_test_strategy(),
+                             active_learning_problem_three_probs))
+
+    graph_pts_four = GraphPositiveTestStrategy(active_learning_problem_four)
+    assert np.all(np.isclose(graph_pts_four.positive_test_strategy(),
+                             active_learning_problem_four_probs))

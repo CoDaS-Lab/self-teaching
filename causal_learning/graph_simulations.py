@@ -5,31 +5,31 @@ from causal_learning import dag
 from causal_learning import utils
 from causal_learning.graph_active_learner import GraphActiveLearner
 from causal_learning.graph_self_teacher import GraphSelfTeacher
+from causal_learning.graph_positive_test_strategy import GraphPositiveTestStrategy
 
 if __name__ == "__main__":
     t = 0.8  # transmission rate
     b = 0.0  # background rate
 
-    # get predictions of information gain model for all 27 problems
     active_learning_problems = utils.create_active_learning_hyp_space(t=t, b=b)
     ig_model_predictions = []
-    tau = 0.37
+    self_teaching_model_predictions = []
+    pts_model_predictions = []
 
+    # get predictions of all three models
     for i, active_learning_problem in enumerate(active_learning_problems):
         gal = GraphActiveLearner(active_learning_problem)
         gal.update_posterior()
         eig = gal.expected_information_gain().tolist()
         ig_model_predictions.append(eig)
 
-    # get predictions of self-teaching model for all 27 problems
-    active_learning_problems = utils.create_active_learning_hyp_space(t=t, b=b)
-    self_teaching_model_predictions = []
-
-    for i, active_learning_problem in enumerate(active_learning_problems):
         gst = GraphSelfTeacher(active_learning_problem)
         gst.update_learner_posterior()
         self_teaching_posterior = gst.update_self_teaching_posterior()
         self_teaching_model_predictions.append(self_teaching_posterior)
+
+        gpts = GraphPositiveTestStrategy(active_learning_problem)
+        pts_model_predictions.append(gpts.positive_test_strategy())
 
     figure, ax = plt.subplots()
     ax.set_frame_on(False)
@@ -52,6 +52,9 @@ if __name__ == "__main__":
                     color='red', label="Information Gain")
         tax.scatter([self_teaching_model_predictions[i]],
                     marker='o', color='blue', label="Self-Teaching")
+        tax.scatter([pts_model_predictions[i]],
+                    marker='o', color='green', label="Positive-Test Strategy")
+
         tax.line(points_one[0], points_one[1], color='black', linestyle=':')
         tax.line(points_two[0], points_two[1], color='black', linestyle=':')
         tax.line(points_three[0], points_three[1],
@@ -61,6 +64,6 @@ if __name__ == "__main__":
         handles, labels = ax.get_legend_handles_labels()
 
     figure.suptitle(
-        "Comparing predictions from the Information Gain (red) and Self-Teaching (blue) models")
+        "Comparing predictions from the Information Gain (red), Self-Teaching (blue) and Positive-Test Strategy (green) models")
     figure.legend(handles, labels, loc='lower center')
     plt.show()
