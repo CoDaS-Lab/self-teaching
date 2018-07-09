@@ -49,11 +49,13 @@ if __name__ == "__main__":
         tax.set_title("Problem {}".format(i+1), fontsize=10)
         tax.boundary(linewidth=2.0)
         tax.scatter([ig_model_predictions[i]], marker='o',
-                    color='red', label="Information Gain")
-        tax.scatter([self_teaching_model_predictions[i]],
-                    marker='o', color='blue', label="Self-Teaching")
+                    color='red', label="Information Gain", alpha=0.6, s=80)
         tax.scatter([pts_model_predictions[i]],
-                    marker='o', color='green', label="Positive-Test Strategy")
+                    marker='o', color='green', label="Positive-Test Strategy",
+                    alpha=0.6, s=80)
+        tax.scatter([self_teaching_model_predictions[i]],
+                    marker='o', color='blue', label="Self-Teaching",
+                    alpha=0.6, s=80)
 
         tax.line(points_one[0], points_one[1], color='black', linestyle=':')
         tax.line(points_two[0], points_two[1], color='black', linestyle=':')
