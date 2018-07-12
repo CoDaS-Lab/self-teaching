@@ -1,10 +1,10 @@
 import pytest
 import numpy as np
-from causal_learning import utils
-from causal_learning.dag import DirectedGraph
-from causal_learning.graph_teacher import GraphTeacher
-from causal_learning.graph_active_learner import GraphActiveLearner
-from causal_learning.graph_positive_test_strategy import GraphPositiveTestStrategy
+from models import utils
+from models.dag import DirectedGraph
+from models.graph_teacher import GraphTeacher
+from models.graph_active_learner import GraphActiveLearner
+from models.graph_positive_test_strategy import GraphPositiveTestStrategy
 
 
 def test_get_parents():

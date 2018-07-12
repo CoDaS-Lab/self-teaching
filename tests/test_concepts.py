@@ -1,8 +1,8 @@
 import pytest
 import numpy as np
-from concept_learning.utils import create_line_hyp_space
-from concept_learning.utils import create_boundary_hyp_space
-from concept_learning.self_teacher import SelfTeacher
+from models.utils import create_line_hyp_space
+from models.utils import create_boundary_hyp_space
+from models.concept_self_teacher import ConceptSelfTeacher
 
 
 def test_create_line_hyp_space():
@@ -46,12 +46,13 @@ def test_create_boundary_hyp_space():
     assert np.array_equal(boundary_hyp_space_two, true_hyp_space_two)
 
 
-def test_self_teacher():
+def test_concept_self_teacher():
     n_features = 3
     hyp_space_type = "boundary"
     sampling = "max"
 
-    self_teacher = SelfTeacher(n_features, hyp_space_type, sampling=sampling)
+    self_teacher = ConceptSelfTeacher(
+        n_features, hyp_space_type, sampling=sampling)
     _, _, self_teacher_prob = self_teacher.run()
 
     first_feature_prob = np.array([50/154, 54/154, 50/154])
