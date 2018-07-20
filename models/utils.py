@@ -19,7 +19,7 @@ def create_boundary_hyp_space(n_features):
     hyp_space = []
     for i in range(n_features + 1):
         hyp = [1 for _ in range(n_features)]
-        hyp[:i] = [0 for _ in range(i)]
+        hyp[n_features-i:n_features] = [0 for _ in range(i)]
         hyp_space.append(hyp)
     hyp_space = np.array(hyp_space)
     return hyp_space
