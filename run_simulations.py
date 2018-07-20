@@ -31,20 +31,60 @@ def run_first_feature_boundary_simulations():
     self_teacher_prob_one = st.self_teaching_posterior[0, :, 0]
 
     plt.figure()
-    plt.plot(np.arange(n_features), active_learning_prob_one,
+    plt.plot(np.arange(1, n_features + 1), active_learning_prob_one,
              color='red',
-             label="Active learner first feature prob")
-    plt.plot(np.arange(n_features), self_teacher_prob_one,
+             linestyle=':',
+             label="Information Gain model")
+    plt.plot(np.arange(1, n_features + 1), self_teacher_prob_one,
              color='blue',
-             label="Self-teacher first feature prob")
+             label="Self-teaching model")
     axes = plt.gca()
-    # axes.set_ylim([0.1, 0.15])
-    plt.xticks(np.arange(n_features))
+    axes.set_ylim([0, 0.5])
+    plt.xticks(np.arange(1, n_features+1))
     handles, labels = ax.get_legend_handles_labels()
-    figure.legend(handles, labels, loc='lower center')
+    plt.legend(loc='lower center')
     plt.xlabel("Feature")
     plt.ylabel("Probability of selecting feature")
     plt.savefig('figures/concept_learning_boundary_first_feature_prob.png')
+
+
+def run_eight_feature_boundary_simulations():
+    hyp_space_type = "boundary"
+    n_features = 8
+    sampling = "max"
+
+    figure, ax = plt.subplots()
+
+    al = ConceptActiveLearner(n_features, hyp_space_type, sampling)
+    active_learning_prob_one = np.array([
+        al.expected_information_gain(x) for x in range(n_features)])
+
+    # normalize
+    active_learning_prob_one = active_learning_prob_one / \
+        np.sum(active_learning_prob_one)
+
+    # get predictions from self-teaching model
+    st = ConceptSelfTeacher(n_features, hyp_space_type, sampling)
+    st.update_learner_posterior()
+    st.update_self_teaching_posterior()
+    self_teacher_prob_one = st.self_teaching_posterior[0, :, 0]
+
+    plt.figure()
+    plt.plot(np.arange(1, n_features + 1), active_learning_prob_one,
+             color='red',
+             linestyle=':',
+             label="Information Gain model")
+    plt.plot(np.arange(1, n_features + 1), self_teacher_prob_one,
+             color='blue',
+             label="Self-teaching model")
+    axes = plt.gca()
+    axes.set_ylim([0, 0.5])
+    plt.xticks(np.arange(1, n_features+1))
+    handles, labels = ax.get_legend_handles_labels()
+    plt.legend(loc='lower center')
+    plt.xlabel("Feature")
+    plt.ylabel("Probability of selecting feature")
+    plt.savefig('figures/concept_learning_boundary_eight_feature_prob.png')
 
 
 def run_second_feature_boundary_simulations():
@@ -56,7 +96,7 @@ def run_second_feature_boundary_simulations():
 
     # feature, label pairs
     xs = [0, 1, 1, 2]
-    ys = [0, 0, 1, 1]
+    ys = [1, 0, 1, 0]
 
     figure, ax = plt.subplots()
     figure.set_size_inches(10, 10)
@@ -102,19 +142,21 @@ def run_second_feature_boundary_simulations():
 
         # plot second feature prob
         plt.subplot(2, 2, i+1)
-        plt.plot(np.arange(n_features), active_learning_prob_two,
+        plt.plot(np.arange(1, n_features + 1), active_learning_prob_two,
                  color='red',
-                 label="Active learner second feature prob")
-        plt.plot(np.arange(n_features), self_teacher_prob_two,
+                 linestyle=':',
+                 label="Information Gain model")
+        plt.plot(np.arange(1, n_features + 1), self_teacher_prob_two,
                  color='blue',
-                 label="Self-teacher second feature prob")
+                 label="Self-teaching model")
         axes = plt.gca()
         axes.set_ylim([0, 1])
         plt.xlabel("Feature")
         plt.ylabel("Probability of selecting feature")
-        plt.title('x = {}, y = {}'.format(x, y))
-        plt.xticks([0, 1, 2])
+        plt.title('x = {}, y = {}'.format(x+1, y))
+        plt.xticks([1, 2, 3])
         handles, labels = ax.get_legend_handles_labels()
+        plt.legend()
 
     plt.savefig('figures/concept_learning_boundary_second_feature_prob.png')
 
@@ -147,17 +189,19 @@ def run_three_feature_line_simulations():
     self_teacher_prob_one = st.self_teaching_posterior[0, :, 0]
 
     plt.figure()
-    plt.plot(np.arange(n_features), active_learning_prob_one,
+    plt.plot(np.arange(1, n_features + 1), active_learning_prob_one,
              color='red',
-             label="Active learner first feature prob")
-    plt.plot(np.arange(n_features), self_teacher_prob_one,
+             linestyle=':',
+             label="Information Gain model")
+    plt.plot(np.arange(1, n_features + 1), self_teacher_prob_one,
              color='blue',
-             label="Self-teacher first feature prob")
+             label="Self-teaching model")
     axes = plt.gca()
     # axes.set_ylim([0.1, 0.15])
-    plt.xticks(np.arange(n_features))
+    plt.xticks(np.arange(1, n_features+1))
+    axes.set_ylim([0, 0.4])
     handles, labels = ax.get_legend_handles_labels()
-    figure.legend(handles, labels, loc='lower center')
+    plt.legend(loc='lower center')
     plt.xlabel("Feature")
     plt.ylabel("Probability of selecting feature")
     plt.savefig('figures/concept_learning_line_three_features.png')
@@ -186,17 +230,18 @@ def run_eight_feature_line_simulations():
     self_teacher_prob_one = st.self_teaching_posterior[0, :, 0]
 
     plt.figure()
-    plt.plot(np.arange(n_features), active_learning_prob_one,
+    plt.plot(np.arange(1, n_features + 1), active_learning_prob_one,
              color='red',
-             label="Active learner first feature prob")
-    plt.plot(np.arange(n_features), self_teacher_prob_one,
+             linestyle=':',
+             label="Information Gain model")
+    plt.plot(np.arange(1, n_features + 1), self_teacher_prob_one,
              color='blue',
-             label="Self-teacher first feature prob")
+             label="Self-teaching model")
     axes = plt.gca()
-    # axes.set_ylim([0.1, 0.15])
-    plt.xticks(np.arange(n_features))
+    axes.set_ylim([0, 0.2])
+    plt.xticks(np.arange(1, n_features + 1))
     handles, labels = ax.get_legend_handles_labels()
-    figure.legend(handles, labels, loc='lower center')
+    plt.legend(loc='lower center')
     plt.xlabel("Feature")
     plt.ylabel("Probability of selecting feature")
     plt.savefig('figures/concept_learning_line_eight_features.png')
@@ -227,7 +272,7 @@ def run_causal_simulations():
         pts_model_predictions.append(gpts.positive_test_strategy())
 
     figure, ax = plt.subplots()
-    figure.set_size_inches(14, 6)
+    figure.set_size_inches(16, 5)
 
     ax.set_frame_on(False)
     ax.set_xticks([])
@@ -244,28 +289,34 @@ def run_causal_simulations():
         tax.set_title("Problem {}".format(i+1), fontsize=10)
         tax.boundary(linewidth=2.0)
         tax.scatter([ig_model_predictions[i]], marker='o',
-                    color='red', label="Information Gain", alpha=0.6, s=80)
+                    color='red', label="Information Gain", alpha=0.8, s=40)
         tax.scatter([pts_model_predictions[i]],
-                    marker='o', color='green', label="Positive-Test Strategy",
-                    alpha=0.6, s=80)
+                    marker='d', color='green', label="Positive-Test Strategy",
+                    alpha=0.8, s=40)
         tax.scatter([self_teaching_model_predictions[i]],
-                    marker='o', color='blue', label="Self-Teaching",
-                    alpha=0.6, s=80)
+                    marker='s', color='blue', label="Self-Teaching",
+                    alpha=0.8, s=40)
 
-        tax.line(points_one[0], points_one[1], color='black', linestyle=':')
-        tax.line(points_two[0], points_two[1], color='black', linestyle=':')
+        tax.line(points_one[0], points_one[1],
+                 color='black', linestyle=':')
+        tax.line(points_two[0], points_two[1],
+                 color='black', linestyle=':')
         tax.line(points_three[0], points_three[1],
                  color='black', linestyle=':')
+        tax.left_axis_label("x_1", fontsize=20)
+        tax.right_axis_label("x_2", fontsize=20)
+        tax.bottom_axis_label("x_3", fontsize=20)
+
         tax.clear_matplotlib_ticks()
         ax.set_frame_on(False)
         handles, labels = ax.get_legend_handles_labels()
 
-    figure.legend(handles, labels, loc='lower center')
-    plt.savefig('figures/causal_learning_simulations.png', dpi=100)
+    plt.savefig('figures/causal_learning_simulations.png', dpi=600)
 
 
 if __name__ == "__main__":
     run_first_feature_boundary_simulations()
+    run_eight_feature_boundary_simulations()
     run_second_feature_boundary_simulations()
     run_three_feature_line_simulations()
     run_eight_feature_line_simulations()
