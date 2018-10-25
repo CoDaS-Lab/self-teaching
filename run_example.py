@@ -76,7 +76,7 @@ def plot_first_feature_heatmap():
                                   [1/3, 1/3, 1/3, 0]])
 
     plt.figure()
-    sns.heatmap(learner_posterior, cmap='Blues', linewidth=0.5, vmin=0, vmax=1)
+    sns.heatmap(learner_posterior, cmap='Greys', linewidth=0.5, vmin=0, vmax=1)
     plt.xticks([1/2, 3/2, 5/2, 7/2], ['h1', 'h2', 'h3', 'h4'])
     plt.yticks([1/2, 3/2, 5/2, 7/2, 9/2, 11/2],
                ['x=1, y=0', 'x=1, y=1',
@@ -101,7 +101,7 @@ def plot_first_feature_heatmap():
     ])
 
     plt.figure()
-    sns.heatmap(teaching_posterior, cmap='Blues',
+    sns.heatmap(teaching_posterior, cmap='Greys',
                 linewidth=0.5, vmin=0, vmax=1)
     plt.xticks([1/2, 3/2, 5/2, 7/2], ['h1', 'h2', 'h3', 'h4'])
     plt.yticks([1/2, 3/2, 5/2, 7/2, 9/2, 11/2],
@@ -119,13 +119,13 @@ def plot_first_feature_heatmap():
 
     learner_posterior_colsum = np.array([11/6, 7/6, 7/6, 11/6])
     plt.figure()
-    sns.barplot(np.arange(4), learner_posterior_colsum, palette='Blues')
+    sns.barplot(np.arange(4), learner_posterior_colsum, palette='Greys')
     plt.xticks(np.arange(4), ['h1', 'h2', 'h3', 'h4'])
     plt.savefig('figures/example/matching_learner_posterior_colsum.pdf')
 
     learner_posterior_rowsum = np.array([1, 1, 1, 1, 1, 1])
     plt.figure()
-    sns.barplot(np.arange(6), learner_posterior_rowsum, palette='Blues')
+    sns.barplot(np.arange(6), learner_posterior_rowsum, palette='Greys')
     plt.xticks(np.arange(6), ['x=1, y=0', 'x=1, y=1', 'x=2, y=0',
                               'x=2, y=1', 'x=3, y=0', 'x=3, y=1'])
     plt.savefig('figures/example/matching_learner_posterior_rowsum.pdf')
@@ -134,20 +134,20 @@ def plot_first_feature_heatmap():
     Z = np.sum(learner_posterior, axis=0) * 1/6
     Z_inv = 1 / Z
     plt.figure()
-    sns.barplot(np.arange(4), Z_inv, palette='Blues')
+    sns.barplot(np.arange(4), Z_inv, palette='Greys')
     plt.xticks(np.arange(4), ['h1', 'h2', 'h3', 'h4'])
     plt.savefig('figures/example/matching_Z_inv.pdf')
 
     self_teaching_posterior = np.array([25/77, 27/77, 25/77])
     plt.figure()
-    sns.barplot(np.arange(3), self_teaching_posterior, palette='Blues')
+    sns.barplot(np.arange(3), self_teaching_posterior, palette='Greys')
     plt.xticks(np.arange(3), ['x1', 'x2', 'x3'])
     plt.savefig('figures/example/matching_self_teaching_posterior.pdf')
 
     obs_lik = np.sum(
         st.likelihood() * st.learner_prior, axis=0)
     plt.figure()
-    sns.barplot(np.arange(6), obs_lik.flatten(), palette='Blues')
+    sns.barplot(np.arange(6), obs_lik.flatten(), palette='Greys')
     plt.xticks(np.arange(6), ['x=1, y=0', 'x=1, y=1', 'x=2, y=0',
                               'x=2, y=1', 'x=3, y=0', 'x=3, y=1'])
     plt.savefig('figures/example/matching_observation_likelihood.pdf')
@@ -156,7 +156,7 @@ def plot_first_feature_heatmap():
     posterior_entropy = -np.sum(st.learner_posterior *
                                 np.nan_to_num(np.log2(st.learner_posterior)), axis=0)
     plt.figure()
-    sns.barplot(np.arange(6), posterior_entropy.flatten(), palette='Blues')
+    sns.barplot(np.arange(6), posterior_entropy.flatten(), palette='Greys')
     plt.xticks(np.arange(6), ['x=1, y=0', 'x=1, y=1', 'x=2, y=0',
                               'x=2, y=1', 'x=3, y=0', 'x=3, y=1'])
     plt.savefig('figures/example/matching_posterior_entropy.pdf')
@@ -166,14 +166,14 @@ def plot_first_feature_heatmap():
     expected_information_gain = expected_information_gain / \
         np.sum(expected_information_gain)
     plt.figure()
-    sns.barplot(np.arange(3), expected_information_gain, palette='Blues')
+    sns.barplot(np.arange(3), expected_information_gain, palette='Greys')
     plt.xticks(np.arange(3), ['x1', 'x2', 'x3'])
     plt.savefig('figures/example/matching_expected_information_gain.pdf')
 
     prior_entropy = np.array([2, 2, 2, 2, 2, 2])
     information_gain = prior_entropy - posterior_entropy.flatten()
     plt.figure()
-    sns.barplot(np.arange(6), information_gain, palette='Blues')
+    sns.barplot(np.arange(6), information_gain, palette='Greys')
     plt.xticks(np.arange(6), ['x=1, y=0', 'x=1, y=1', 'x=2, y=0',
                               'x=2, y=1', 'x=3, y=0', 'x=3, y=1'])
     plt.savefig('figures/example/matching_information_gain.pdf')
