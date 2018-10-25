@@ -33,18 +33,20 @@ def run_first_feature_boundary_simulations():
     plt.figure()
     plt.plot(np.arange(1, n_features + 1), active_learning_prob_one,
              color='red',
-             linestyle=':',
+             # linestyle='',
              label="Information Gain model")
     plt.plot(np.arange(1, n_features + 1), self_teacher_prob_one,
              color='blue',
              label="Self-teaching model")
     axes = plt.gca()
     axes.set_ylim([0, 0.5])
-    plt.xticks(np.arange(1, n_features+1))
+    plt.xticks(np.arange(1, n_features+1), fontsize=16)
+    plt.yticks(fontsize=16)
     handles, labels = ax.get_legend_handles_labels()
-    plt.legend(loc='lower center')
-    plt.xlabel("Feature")
-    plt.ylabel("Probability of selecting feature")
+    plt.legend(loc='lower center', fontsize=16)
+    plt.xlabel("Feature", fontsize=16)
+    plt.ylabel("Probability of selecting feature", fontsize=16)
+    plt.tight_layout()
     plt.savefig('figures/concept_learning_boundary_first_feature_prob.png')
 
 
@@ -72,18 +74,20 @@ def run_eight_feature_boundary_simulations():
     plt.figure()
     plt.plot(np.arange(1, n_features + 1), active_learning_prob_one,
              color='red',
-             linestyle=':',
+             # linestyle=':',
              label="Information Gain model")
     plt.plot(np.arange(1, n_features + 1), self_teacher_prob_one,
              color='blue',
              label="Self-teaching model")
     axes = plt.gca()
     axes.set_ylim([0, 0.5])
-    plt.xticks(np.arange(1, n_features+1))
+    plt.xticks(np.arange(1, n_features+1), fontsize=16)
+    plt.yticks(fontsize=16)
     handles, labels = ax.get_legend_handles_labels()
-    plt.legend(loc='lower center')
-    plt.xlabel("Feature")
-    plt.ylabel("Probability of selecting feature")
+    plt.legend(loc='lower center', fontsize=16)
+    plt.xlabel("Feature", fontsize=16)
+    plt.ylabel("Probability of selecting feature", fontsize=16)
+    plt.tight_layout()
     plt.savefig('figures/concept_learning_boundary_eight_feature_prob.png')
 
 
@@ -144,20 +148,22 @@ def run_second_feature_boundary_simulations():
         plt.subplot(2, 2, i+1)
         plt.plot(np.arange(1, n_features + 1), active_learning_prob_two,
                  color='red',
-                 linestyle=':',
+                 # linestyle=':',
                  label="Information Gain model")
         plt.plot(np.arange(1, n_features + 1), self_teacher_prob_two,
                  color='blue',
                  label="Self-teaching model")
         axes = plt.gca()
         axes.set_ylim([0, 1])
-        plt.xlabel("Feature")
-        plt.ylabel("Probability of selecting feature")
-        plt.title('x = {}, y = {}'.format(x+1, y))
-        plt.xticks([1, 2, 3])
+        plt.xlabel("Feature", fontsize=16)
+        plt.ylabel("Probability of selecting feature", fontsize=16)
+        plt.title('x = {}, y = {}'.format(x+1, y), fontsize=18)
+        plt.xticks([1, 2, 3], fontsize=16)
+        plt.yticks(fontsize=16)
         handles, labels = ax.get_legend_handles_labels()
-        plt.legend()
+        plt.legend(fontsize=12)
 
+    plt.tight_layout()
     plt.savefig('figures/concept_learning_boundary_second_feature_prob.png')
 
 
@@ -191,19 +197,21 @@ def run_three_feature_line_simulations():
     plt.figure()
     plt.plot(np.arange(1, n_features + 1), active_learning_prob_one,
              color='red',
-             linestyle=':',
+             # linestyle=':',
              label="Information Gain model")
     plt.plot(np.arange(1, n_features + 1), self_teacher_prob_one,
              color='blue',
              label="Self-teaching model")
     axes = plt.gca()
     # axes.set_ylim([0.1, 0.15])
-    plt.xticks(np.arange(1, n_features+1))
+    plt.xticks(np.arange(1, n_features+1), fontsize=16)
+    plt.yticks(fontsize=16)
     axes.set_ylim([0, 0.4])
     handles, labels = ax.get_legend_handles_labels()
-    plt.legend(loc='lower center')
-    plt.xlabel("Feature")
-    plt.ylabel("Probability of selecting feature")
+    plt.legend(loc='lower center', fontsize=16)
+    plt.xlabel("Feature", fontsize=16)
+    plt.ylabel("Probability of selecting feature", fontsize=16)
+    plt.tight_layout()
     plt.savefig('figures/concept_learning_line_three_features.png')
 
 
@@ -232,19 +240,45 @@ def run_eight_feature_line_simulations():
     plt.figure()
     plt.plot(np.arange(1, n_features + 1), active_learning_prob_one,
              color='red',
-             linestyle=':',
+             # linestyle=':',
              label="Information Gain model")
     plt.plot(np.arange(1, n_features + 1), self_teacher_prob_one,
              color='blue',
              label="Self-teaching model")
     axes = plt.gca()
     axes.set_ylim([0, 0.2])
-    plt.xticks(np.arange(1, n_features + 1))
+    plt.xticks(np.arange(1, n_features + 1), fontsize=16)
+    plt.yticks(fontsize=16)
     handles, labels = ax.get_legend_handles_labels()
-    plt.legend(loc='lower center')
-    plt.xlabel("Feature")
-    plt.ylabel("Probability of selecting feature")
+    plt.legend(loc='lower center', fontsize=16)
+    plt.xlabel("Feature", fontsize=16)
+    plt.ylabel("Probability of selecting feature", fontsize=16)
+    plt.tight_layout()
     plt.savefig('figures/concept_learning_line_eight_features.png')
+
+
+def run_causal_subset_simulations():
+    t = 0.8  # transmission rate
+    b = 0.0  # background rate
+
+    active_learning_problems = utils.create_active_learning_hyp_space(t=t, b=b)
+    active_learning_subset = [active_learning_problems[i] for i in [7, 13, 15]]
+    ig_model_predictions = []
+    self_teaching_model_predictions = []
+
+    # get predictions of all three models
+    for i, active_learning_problem in enumerate(active_learning_subset):
+        # gal = GraphActiveLearner(active_learning_problem)
+        # gal.update_posterior()
+        # eig = gal.expected_information_gain().tolist()
+        # ig_model_predictions.append(eig)
+
+        gst = GraphSelfTeacher(active_learning_problem)
+        gst.update_learner_posterior()
+        self_teaching_posterior = gst.update_self_teaching_posterior()
+        self_teaching_model_predictions.append(self_teaching_posterior)
+
+    return ig_model_predictions, self_teaching_model_predictions
 
 
 def run_causal_simulations():
