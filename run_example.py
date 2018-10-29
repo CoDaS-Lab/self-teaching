@@ -50,9 +50,11 @@ def plot_mismatching_example_figures():
 
     # teaching posterior
     teaching_prior = 1 / 6 * np.ones_like(learner_posterior_flat)
-    teaching_posterior = ((learner_posterior_flat * teaching_prior).T /
-                          np.sum(learner_posterior_flat * teaching_prior, axis=1).T).T
+    teaching_posterior = learner_posterior_flat * teaching_prior / \
+        np.sum(learner_posterior_flat * teaching_prior, axis=0)
     teaching_posterior = np.nan_to_num(teaching_posterior)
+
+    print(teaching_posterior)
 
     plt.figure()
     sns.heatmap(teaching_posterior, cmap='Greys',
