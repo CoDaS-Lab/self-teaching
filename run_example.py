@@ -1,10 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
-from models import utils
-from models.concept_active_learner import ConceptActiveLearner
 from models.concept_self_teacher import ConceptSelfTeacher
-from models.graph_active_learner import GraphActiveLearner
 
 
 def plot_mismatching_example_figures():
@@ -51,8 +48,6 @@ def plot_mismatching_example_figures():
                                 [1/3, 1/3, 1/3, 1],
                                 [2/3, 2/3, 2/3, 0]])
 
-    prior = 1/4 * np.ones_like(likelihood)
-
     # teaching posterior
     teaching_prior = 1 / 6 * np.ones_like(learner_posterior_flat)
     teaching_posterior = (learner_posterior_flat * teaching_prior) / \
@@ -79,58 +74,23 @@ def plot_mismatching_example_figures():
     plt.figure()
     sns.barplot(np.arange(4), learner_posterior_colsum, palette='Greys')
     plt.xticks(np.arange(4), ['h1', 'h2', 'h3', 'h4'])
-    plt.savefig('figures/example/matching_learner_posterior_colsum.pdf')
+    plt.savefig('figures/example/mismatching_learner_posterior_colsum.pdf')
 
     learner_posterior_rowsum = np.sum(learner_posterior_flat, axis=1)
     plt.figure()
     sns.barplot(np.arange(6), learner_posterior_rowsum, palette='Greys')
     plt.xticks(np.arange(6), ['x=1, y=0', 'x=1, y=1', 'x=2, y=0',
                               'x=2, y=1', 'x=3, y=0', 'x=3, y=1'])
-    plt.savefig('figures/example/matching_learner_posterior_rowsum.pdf')
+    plt.savefig('figures/example/mismatching_learner_posterior_rowsum.pdf')
 
     teaching_posterior_rowsum = np.sum(teaching_posterior, axis=1)
     plt.figure()
     sns.barplot(np.arange(6), teaching_posterior_rowsum, palette='Greys')
     plt.xticks(np.arange(6), ['x=1, y=0', 'x=1, y=1', 'x=2, y=0',
                               'x=2, y=1', 'x=3, y=0', 'x=3, y=1'])
-    plt.savefig('figures/example/matching_teaching_posterior_rowsum.pdf')
+    plt.savefig('figures/example/mismatching_teaching_posterior_rowsum.pdf')
 
-    # calculate self-teaching posterior
-    # p_l(h)
-    # self_teaching_prior = 1/2 * np.ones_like(learner_posterior)
-
-    # # p_t(x, y)
-    # joint_feature_label_prior = 1/6 * np.ones_like(learner_posterior)
-
-    # p(h|x, y) * p(x, y) / Z
-    # self_teaching_posterior = learner_posterior * joint_feature_label_prior
-    # self_teaching_posterior = self_teaching_posterior / \
-    #                            np.sum(self_teaching_posterior, axis=(1))
-    # self_teaching_posterior = np.nan_to_num(self_teaching_posterior)
-
-    # self_teaching_posterior = np.sum(
-    #     self_teaching_posterior * self_teaching_prior, axis=(0, 2))
-
-    # normalize
-    # self_teaching_posterior = self_teaching_posterior / \
-    #     np.sum(self_teaching_posterior)
-
-    # print(self_teaching_posterior)
-
-    # calculate expected information gain
-    # H(h)
     learner_prior = 1 / 4 * np.ones_like(learner_posterior_flat)
-    # prior_entropy = -np.sum(learner_prior * np.log2(learner_prior), axis=0)
-
-    # # H(h|x, y)
-    # posterior_entropy = -np.sum(learner_posterior_flat * np.nan_to_num(
-    #     np.log2(learner_posterior_flat)), axis=0)
-
-    # p(y|x)
-    # obs_lik = np.sum(prior * likelihood, axis=0)
-
-    # EIG(x) = H(h) - \sum_y p(y|x) H(h|x, y)
-    # eig = prior_entropy.T - np.sum(obs_lik * posterior_entropy, axis=1)
 
     # calculate 1/Z
     Z = np.sum(learner_posterior_flat, axis=0) * 1/6
@@ -147,7 +107,7 @@ def plot_mismatching_example_figures():
     plt.savefig('figures/example/mismatching_self_teaching_posterior.pdf')
 
     obs_lik = np.sum(
-        likelihood_flat * learner_prior, axis=0)
+        likelihood_flat * learner_prior, axis=1)
     plt.figure()
     sns.barplot(np.arange(6), obs_lik, palette='Greys')
     plt.xticks(np.arange(6), ['x=1, y=0', 'x=1, y=1', 'x=2, y=0',
@@ -155,19 +115,20 @@ def plot_mismatching_example_figures():
     plt.savefig('figures/example/mismatching_observation_likelihood.pdf')
 
     posterior_entropy = -np.sum(learner_posterior_flat *
-                                np.nan_to_num(np.log2(learner_posterior_flat)), axis=0)
+                                np.nan_to_num(np.log2(learner_posterior_flat)), axis=1)
     plt.figure()
     sns.barplot(np.arange(6), posterior_entropy, palette='Greys')
     plt.xticks(np.arange(6), ['x=1, y=0', 'x=1, y=1', 'x=2, y=0',
                               'x=2, y=1', 'x=3, y=0', 'x=3, y=1'])
     plt.savefig('figures/example/mismatching_posterior_entropy.pdf')
 
-    print(obs_lik)
-    print(posterior_entropy)
-
     prior_entropy = np.array([2, 2, 2])
-    expected_information_gain = prior_entropy.T - \
-        np.sum(obs_lik * posterior_entropy, axis=1)
+    weighted_posterior_entropy = np.array([
+        obs_lik[0] * posterior_entropy[0] + obs_lik[1] * posterior_entropy[1],
+        obs_lik[2] * posterior_entropy[2] + obs_lik[3] * posterior_entropy[3],
+        obs_lik[4] * posterior_entropy[4] + obs_lik[5] * posterior_entropy[5],
+    ])
+    expected_information_gain = prior_entropy.T - weighted_posterior_entropy
     expected_information_gain = expected_information_gain / \
         np.sum(expected_information_gain)
     plt.figure()
