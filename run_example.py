@@ -54,8 +54,6 @@ def plot_mismatching_example_figures():
         np.sum(learner_posterior_flat * teaching_prior, axis=0)
     teaching_posterior = np.nan_to_num(teaching_posterior)
 
-    print(teaching_posterior)
-
     plt.figure()
     sns.heatmap(teaching_posterior, cmap='Greys',
                 linewidth=0.5, vmin=0, vmax=1)
@@ -240,25 +238,32 @@ def plot_matching_example_figures():
     plt.xticks(np.arange(3), ['x1', 'x2', 'x3'])
     plt.savefig('figures/example/matching_self_teaching_posterior.pdf')
 
-    obs_lik = np.sum(
-        st.likelihood() * st.learner_prior, axis=0)
+    learner_prior = 1/4 * np.ones_like(learner_posterior)
+    likelihood = np.array([[0, 0, 0, 1],
+                           [1, 1, 1, 0],
+                           [0, 0, 1, 1],
+                           [1, 1, 0, 0],
+                           [0, 1, 1, 1],
+                           [1, 0, 0, 0]])
+
+    obs_lik = np.sum(likelihood * learner_prior, axis=1)
     plt.figure()
-    sns.barplot(np.arange(6), obs_lik.flatten(), palette='Greys')
+    sns.barplot(np.arange(6), obs_lik, palette='Greys')
     plt.xticks(np.arange(6), ['x=1, y=0', 'x=1, y=1', 'x=2, y=0',
                               'x=2, y=1', 'x=3, y=0', 'x=3, y=1'])
     plt.savefig('figures/example/matching_observation_likelihood.pdf')
 
     prior_entropy = np.array([2, 2, 2])
-    posterior_entropy = -np.sum(st.learner_posterior *
-                                np.nan_to_num(np.log2(st.learner_posterior)), axis=0)
+    posterior_entropy = -np.sum(learner_posterior *
+                                np.nan_to_num(np.log2(learner_posterior)), axis=1)
     plt.figure()
-    sns.barplot(np.arange(6), posterior_entropy.flatten(), palette='Greys')
+    sns.barplot(np.arange(6), posterior_entropy, palette='Greys')
     plt.xticks(np.arange(6), ['x=1, y=0', 'x=1, y=1', 'x=2, y=0',
                               'x=2, y=1', 'x=3, y=0', 'x=3, y=1'])
     plt.savefig('figures/example/matching_posterior_entropy.pdf')
 
     expected_information_gain = prior_entropy.T - \
-        np.sum(obs_lik * posterior_entropy, axis=1)
+        np.sum(obs_lik * posterior_entropy)
     expected_information_gain = expected_information_gain / \
         np.sum(expected_information_gain)
     plt.figure()
@@ -267,7 +272,7 @@ def plot_matching_example_figures():
     plt.savefig('figures/example/matching_expected_information_gain.pdf')
 
     prior_entropy = np.array([2, 2, 2, 2, 2, 2])
-    information_gain = prior_entropy - posterior_entropy.flatten()
+    information_gain = prior_entropy - posterior_entropy
     plt.figure()
     sns.barplot(np.arange(6), information_gain, palette='Greys')
     plt.xticks(np.arange(6), ['x=1, y=0', 'x=1, y=1', 'x=2, y=0',
