@@ -239,12 +239,12 @@ def plot_matching_example_figures():
     plt.savefig('figures/example/matching_self_teaching_posterior.pdf')
 
     learner_prior = 1/4 * np.ones_like(learner_posterior)
-    likelihood = np.array([[0, 0, 0, 1],
-                           [1, 1, 1, 0],
+    likelihood = np.array([[0, 1, 1, 1],
+                           [1, 0, 0, 0],
                            [0, 0, 1, 1],
                            [1, 1, 0, 0],
-                           [0, 1, 1, 1],
-                           [1, 0, 0, 0]])
+                           [0, 0, 0, 1],
+                           [1, 1, 1, 0]])
 
     obs_lik = np.sum(likelihood * learner_prior, axis=1)
     plt.figure()
@@ -262,8 +262,13 @@ def plot_matching_example_figures():
                               'x=2, y=1', 'x=3, y=0', 'x=3, y=1'])
     plt.savefig('figures/example/matching_posterior_entropy.pdf')
 
-    expected_information_gain = prior_entropy.T - \
-        np.sum(obs_lik * posterior_entropy)
+    prior_entropy = np.array([2, 2, 2])
+    weighted_posterior_entropy = np.array([
+        obs_lik[0] * posterior_entropy[0] + obs_lik[1] * posterior_entropy[1],
+        obs_lik[2] * posterior_entropy[2] + obs_lik[3] * posterior_entropy[3],
+        obs_lik[4] * posterior_entropy[4] + obs_lik[5] * posterior_entropy[5],
+    ])
+    expected_information_gain = prior_entropy - weighted_posterior_entropy
     expected_information_gain = expected_information_gain / \
         np.sum(expected_information_gain)
     plt.figure()
