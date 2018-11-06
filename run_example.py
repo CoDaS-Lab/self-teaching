@@ -12,10 +12,10 @@ def plot_mismatching_example_figures():
 
     # get predictions from self-teaching model
     st = ConceptSelfTeacher(n_features, hyp_space_type, sampling)
-    st.learner_posterior = np.array([[[1/4, 0], [0, 1/2], [1/6, 1/3]],
-                                     [[1/4, 0], [0, 1/2], [1/6, 1/3]],
-                                     [[1/4, 0], [1/2, 0], [1/6, 1/3]],
-                                     [[1/4, 0], [1/2, 0], [1/2, 0]]])
+    st.learner_posterior = np.array([[[0, 1/4], [0, 1/2], [0, 1/2]],
+                                     [[0, 1/4], [0, 1/2], [1/3, 1/6]],
+                                     [[0, 1/4], [1/2, 0], [1/3, 1/6]],
+                                     [[0, 1/4], [1/2, 0], [1/3, 1/6]]])
 
     learner_posterior_flat = st.learner_posterior.reshape(4, 6).T
 
@@ -93,12 +93,12 @@ def plot_mismatching_example_figures():
     plt.savefig('figures/example/mismatching_self_teaching_posterior.pdf')
 
     # hard code new likelihood
-    likelihood_flat = np.array([[1, 1, 1, 1],
-                                [0, 0, 0, 0],
+    likelihood_flat = np.array([[0, 0, 0, 0],
+                                [1, 1, 1, 1],
                                 [0, 0, 1, 1],
                                 [1, 1, 0, 0],
-                                [1/3, 1/3, 1/3, 1],
-                                [2/3, 2/3, 2/3, 0]])
+                                [0, 2/3, 2/3, 2/3],
+                                [1, 1/3, 1/3, 1/3]])
 
     obs_lik = np.sum(likelihood_flat * 1/4, axis=1)
     plt.figure()
@@ -262,3 +262,8 @@ def plot_matching_example_figures():
     plt.xticks(np.arange(6), ['x=1, y=0', 'x=1, y=1', 'x=2, y=0',
                               'x=2, y=1', 'x=3, y=0', 'x=3, y=1'])
     plt.savefig('figures/example/matching_information_gain.pdf')
+
+
+if __name__ == "__main__":
+    plot_mismatching_example_figures()
+    plot_matching_example_figures()
