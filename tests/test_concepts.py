@@ -31,7 +31,7 @@ def test_create_line_hyp_space():
 def test_create_boundary_hyp_space():
     n_features = 2
     boundary_hyp_space_one = create_boundary_hyp_space(n_features)
-    true_hyp_space_one = np.array([[1, 1], [0, 1], [0, 0]])
+    true_hyp_space_one = np.array([[1, 1], [1, 0], [0, 0]])
 
     assert np.array_equal(boundary_hyp_space_one, true_hyp_space_one)
 
