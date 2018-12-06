@@ -3,5 +3,4 @@
 *.Rhistory
 *#*
 *.pyc
-figures/
 .cache
