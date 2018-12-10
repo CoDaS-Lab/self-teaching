@@ -3,14 +3,11 @@ import models.utils as utils
 
 
 class ConceptActiveLearner:
-    def __init__(self, n_features=3, hyp_space_type="boundary",
-                 sampling="max", true_hyp=None):
+    def __init__(self, n_features=3, hyp_space_type="boundary"):
         assert(n_features > 0)
 
-        self.d = []  # observed data points
-        self.n_obs = 0  # number of observed data points
-        self.n_labels = 2  # number of possible y values
         self.n_features = n_features
+        self.n_labels = 2  # number of possible y values
 
         if hyp_space_type == "boundary":
             self.hyp_space = utils.create_boundary_hyp_space(self.n_features)
@@ -18,159 +15,84 @@ class ConceptActiveLearner:
             self.hyp_space = utils.create_line_hyp_space(self.n_features)
 
         self.n_hyp = len(self.hyp_space)
-        self.prior = np.array([1 / self.n_hyp
-                               for _ in range(self.n_hyp)])
-        self.posterior = self.prior
 
-        if true_hyp is not None:
-            self.true_hyp = true_hyp
-            self.true_hyp_idx = \
-                np.where([np.all(true_hyp == hyp)
-                          for hyp in self.hyp_space])[0]
-        else:
-            self.true_hyp_idx = np.random.randint(self.n_hyp)
-            self.true_hyp = self.hyp_space[self.true_hyp_idx]
+        self.prior = 1 / self.n_hyp * \
+            np.ones((self.n_hyp, self.n_features, self.n_labels))
 
-        self.posterior_true_hyp = np.ones(self.n_features + 1)
-        self.posterior_true_hyp[0] = 1 / self.n_hyp
-        self.first_feature_prob = np.zeros(n_features)
-        self.sampling = sampling
+    def likelihood(self):
+        """Calculates the likelihood for all possible data points and hypotheses"""
 
-    def likelihood(self, x, y):
-        """Calculates the likelihood of observing the datapoint x"""
+        lik = np.zeros((self.n_hyp, self.n_features, self.n_labels))
 
-        # assert np.logical_or(np.isclose(y, 0.0), np.isclose(y, 1.0))
-        # assert y == 0.0 or y == 1.0
-
-        lik = np.zeros(len(self.hyp_space))
         for i, hyp in enumerate(self.hyp_space):
-            if hyp[x] == y:
-                lik[i] = 1
-            else:
-                lik[i] = 0
+            for j, feature in enumerate(range(self.n_features)):
+                for k, label in enumerate(range(self.n_labels)):
+                    if hyp[feature] == label:
+                        lik[i, j, k] = 1
+                    else:
+                        lik[i, j, k] = 0
+
         return lik
 
-    def observe(self, x, y):
-        """Calculate the posterior based on observing x"""
+    def update_posterior(self):
+        """Updates the learner's posterior using Bayes theorem"""
 
-        # assert np.logical_or(np.isclose(y, 0.0), np.isclose(y, 1.0))
-        # assert y == 0 or y == 1
+        self.posterior = self.likelihood() * self.prior
+        denom = np.sum(self.posterior, axis=0)
 
-        lik = self.likelihood(x, y)
-        posterior = np.array(self.posterior) * np.array(lik)
-        if np.sum(posterior) != 0:
-            return posterior / np.sum(posterior)
-        else:
-            return posterior
+        self.posterior = np.nan_to_num(np.divide(
+            self.posterior, denom, where=denom != 0))
 
-    def update(self, x, y):
-        """Updates the model based on observing x using Bayesian inference"""
+        # check sum of posterior is either 0s or 1s for each hyp
+        # assert np.all(np.logical_or(
+        #     np.isclose(np.sum(self.posterior, axis=0), 1.0),
+        #     np.isclose(np.sum(self.posterior, axis=0), 0.0)))
 
-        # assert np.logical_or(np.isclose(y, 0.0), np.isclose(y, 1.0))
-        # assert y == 0 or y == 1
+    def prior_entropy(self):
+        prior_entropy = np.nansum(self.prior * np.log2(1/self.prior), axis=0)
 
-        # lik = self.likelihood(x, y)
-        self.posterior = self.observe(x, y)
+        return prior_entropy
 
-    def entropy(self, p):
-        """Calculate the entropy of a random variable"""
+    def posterior_entropy(self):
+        inv_posterior = np.divide(1, self.posterior, where=self.posterior != 0)
+        log_inv_posterior = np.log2(inv_posterior, where=inv_posterior != 0)
+        posterior_entropy = np.nansum(
+            self.posterior * log_inv_posterior, axis=0)
 
-        # print(np.sum(p))
-        # assert np.sum(p) == 1.0  # checks for valid pmf
+        return posterior_entropy
 
-        p = p[np.nonzero(p)]  # remove all zero probability hypotheses
-        entropy = -1 * np.sum(np.log(p) * p)
-        return entropy
+    def observation_likelihood(self):
+        obs_lik = np.sum(self.prior * self.likelihood(), axis=0)
 
-    def information_gain(self, x, y):
-        """Calulate the amount of information gain from a single observation"""
-        entropy_prior = self.entropy(self.posterior)
-        posterior_new = self.observe(x, y)
-        entropy_post = self.entropy(posterior_new)
-        information_gain = entropy_prior - entropy_post
-        return information_gain
+        # assert np.array_equal(self.posterior, np.nan_to_num(
+        #     np.divide((self.likelihood() * self.prior), obs_lik, where=obs_lik != 0)))
 
-    def expected_information_gain(self, x):
-        """Calculate the expected information gain across all outcomes"""
-        eig_vec = np.zeros(self.n_labels)
-        eig_weights = np.zeros(self.n_labels)
-        for i, y in enumerate(range(self.n_labels)):
-            # calculate information gain
-            eig_vec[i] = self.information_gain(x, y)
+        return obs_lik
 
-            # calculate posterior prob consistent with this observation
-            eig_idx = np.where(self.hyp_space[:, x] == y)
-            eig_weights[i] = np.sum(self.posterior[eig_idx])
+    def expected_information_gain(self):
+        weighted_posterior_entropy = np.zeros(self.n_features)
 
-        return np.dot(eig_vec, eig_weights)
+        joint_posterior_entropy = self.observation_likelihood() * \
+            self.posterior_entropy()
 
-    def run(self, n_steps=None):
-        """Runs the active learner until the true hypothesis is discovered"""
+        # sum over possible observations
+        weighted_posterior_entropy = np.sum(joint_posterior_entropy, axis=1)
 
-        # set n steps to be the number of features if not None
-        if n_steps is None:
-            n_steps = self.n_features
-
-        queries = np.arange(self.n_features)
-
-        # while np.nonzero(self.posterior)[0].shape[0] > 1:
-        while np.count_nonzero(self.posterior) > 1 and n_steps > 0:
-            eig = np.zeros_like(queries, dtype=np.float)
-            for i, query in enumerate(queries):
-                eig[i] = self.expected_information_gain(query)
-
-            # save prob of selecting features
-            if self.n_obs == 0:
-                self.first_feature_prob = eig / np.sum(eig)
-
-            query = -1
-            # select query with maximum expected information gain
-            if self.sampling == "max":
-                query = queries[np.random.choice(
-                    np.where(eig == np.amax(eig))[0])]
-            else:
-                # sample proportionally
-                query = np.random.choice(queries,
-                                         p=np.abs(eig / np.sum(eig)))
-
-            # update model
-            query_y = self.true_hyp[query]
-            self.update(query, query_y)
-
-            # increment number of observations and decrease number of steps
-            self.n_obs += 1
-            n_steps -= 1
-
-            # save current posterior of true hypothesis
-            self.posterior_true_hyp[self.n_obs] = \
-                self.posterior[self.true_hyp_idx]
-
-        return self.n_obs, self.posterior_true_hyp, self.first_feature_prob
+        # take first col of prior entropy
+        eig = self.prior_entropy()[:, 0] - weighted_posterior_entropy
+        return eig
 
 
 if __name__ == "__main__":
     hyp_space_type = "boundary"
     n_features = 3
-    sampling = "max"
 
-    # feature, label pairs
-    xs = [0, 0, 1, 1, 2, 2]
-    ys = [0, 1, 0, 1, 0, 1]
-
-    x = 0
-    y = 1
-
-    al = ActiveLearner(n_features, hyp_space_type, sampling=sampling)
-    active_learning_prob_one = np.array([
-        al.expected_information_gain(x) for x in range(n_features)])
+    al = ConceptActiveLearner(n_features, hyp_space_type)
+    al.update_posterior()
+    active_learning_prob_one = al.expected_information_gain()
 
     # normalize
     active_learning_prob_one = active_learning_prob_one / \
         np.sum(active_learning_prob_one)
 
-    # perform update
-    al.update(x=x, y=y)
-    active_learning_prob_two = np.array([
-        al.expected_information_gain(x) for x in range(n_features)])
-
-    print(active_learning_prob_two)
+    print(active_learning_prob_one)
