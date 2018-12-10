@@ -96,7 +96,7 @@ class GraphSelfTeacher:
         # original code
         self_teaching_posterior_two = np.sum(
             joint_self_teaching_posterior, axis=0)
-        print(self_teaching_posterior_two)
+        # print(self_teaching_posterior_two)
         # self_teaching_posterior_original = [np.sum(
         #     self_teaching_posterior_original[self.interventions == i])
         #     for i in range(self.n_interventions)]

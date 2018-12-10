@@ -8,10 +8,9 @@ def plot_mismatching_example_figures():
     # function to check numbers for made up example
     hyp_space_type = "boundary"
     n_features = 3
-    sampling = "max"
 
     # get predictions from self-teaching model
-    st = ConceptSelfTeacher(n_features, hyp_space_type, sampling)
+    st = ConceptSelfTeacher(n_features, hyp_space_type)
     st.learner_posterior = np.array([[[0, 1/4], [0, 1/2], [0, 1/2]],
                                      [[0, 1/4], [0, 1/2], [1/3, 1/6]],
                                      [[0, 1/4], [1/2, 0], [1/3, 1/6]],
@@ -142,10 +141,9 @@ def plot_mismatching_example_figures():
 def plot_matching_example_figures():
     hyp_space_type = "boundary"
     n_features = 3
-    sampling = "max"
 
     # get predictions from self-teaching model
-    st = ConceptSelfTeacher(n_features, hyp_space_type, sampling)
+    st = ConceptSelfTeacher(n_features, hyp_space_type)
     st.update_learner_posterior()
 
     learner_posterior_flat = st.learner_posterior.reshape(4, 6).T

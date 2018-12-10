@@ -80,13 +80,3 @@ class DirectedGraph:
     def likelihood(self):
         lik = [self.observation_likelihood(obs) for obs in self.observations]
         return lik
-
-
-if __name__ == "__main__":
-    t = 0.8
-    b = 0.01
-    hyp_space = utils.create_teaching_hyp_space(t, b)
-
-    for i in range(len(hyp_space)):
-        print(i)
-        print(hyp_space[i].likelihood())

@@ -12,23 +12,22 @@ from models.graph_positive_test_strategy import GraphPositiveTestStrategy
 def run_first_feature_boundary_simulations():
     hyp_space_type = "boundary"
     n_features = 3
-    sampling = "max"
 
     figure, ax = plt.subplots()
 
-    al = ConceptActiveLearner(n_features, hyp_space_type, sampling)
-    active_learning_prob_one = np.array([
-        al.expected_information_gain(x) for x in range(n_features)])
+    al = ConceptActiveLearner(n_features, hyp_space_type)
+    al.update_posterior()
+    active_learning_prob_one = al.expected_information_gain()
 
     # normalize
     active_learning_prob_one = active_learning_prob_one / \
         np.sum(active_learning_prob_one)
 
     # get predictions from self-teaching model
-    st = ConceptSelfTeacher(n_features, hyp_space_type, sampling)
+    st = ConceptSelfTeacher(n_features, hyp_space_type)
     st.update_learner_posterior()
     st.update_self_teaching_posterior()
-    self_teacher_prob_one = st.self_teaching_posterior[0, :, 0]
+    self_teacher_prob_one = st.self_teaching_posterior
 
     plt.figure()
     plt.plot(np.arange(1, n_features + 1), active_learning_prob_one,
@@ -53,23 +52,22 @@ def run_first_feature_boundary_simulations():
 def run_eight_feature_boundary_simulations():
     hyp_space_type = "boundary"
     n_features = 8
-    sampling = "max"
 
     figure, ax = plt.subplots()
 
-    al = ConceptActiveLearner(n_features, hyp_space_type, sampling)
-    active_learning_prob_one = np.array([
-        al.expected_information_gain(x) for x in range(n_features)])
+    al = ConceptActiveLearner(n_features, hyp_space_type)
+    al.update_posterior()
+    active_learning_prob_one = al.expected_information_gain()
 
     # normalize
     active_learning_prob_one = active_learning_prob_one / \
         np.sum(active_learning_prob_one)
 
     # get predictions from self-teaching model
-    st = ConceptSelfTeacher(n_features, hyp_space_type, sampling)
+    st = ConceptSelfTeacher(n_features, hyp_space_type)
     st.update_learner_posterior()
     st.update_self_teaching_posterior()
-    self_teacher_prob_one = st.self_teaching_posterior[0, :, 0]
+    self_teacher_prob_one = st.self_teaching_posterior
 
     plt.figure()
     plt.plot(np.arange(1, n_features + 1), active_learning_prob_one,
@@ -96,7 +94,6 @@ def run_second_feature_boundary_simulations():
     n_hyp = 4
     n_features = 3
     n_labels = 2
-    sampling = "max"
 
     # feature, label pairs
     xs = [0, 1, 1, 2]
@@ -107,18 +104,23 @@ def run_second_feature_boundary_simulations():
 
     for i, (x, y) in enumerate(zip(xs, ys)):
         # get predictions from active learning model
-        al = ConceptActiveLearner(n_features, hyp_space_type, sampling)
-        active_learning_prob_one = np.array([
-            al.expected_information_gain(x) for x in range(n_features)])
+        al = ConceptActiveLearner(n_features, hyp_space_type)
+        al.update_posterior()
+        active_learning_prob_one = al.expected_information_gain()
 
         # normalize
         active_learning_prob_one = active_learning_prob_one / \
             np.sum(active_learning_prob_one)
 
         # perform update
-        al.update(x=x, y=y)
-        active_learning_prob_two = np.array([
-            al.expected_information_gain(x) for x in range(n_features)])
+        updated_learner_posterior = al.posterior[:, x, y]
+        al.prior = np.repeat(
+            updated_learner_posterior,
+            n_labels * n_features).reshape(
+                n_hyp, n_features, n_labels)
+        al.update_posterior()
+
+        active_learning_prob_two = al.expected_information_gain()
 
         # normalize
         denom = np.sum(active_learning_prob_two)
@@ -127,10 +129,10 @@ def run_second_feature_boundary_simulations():
         active_learning_prob_two[np.isclose(denom, 0)] = 0
 
         # get predictions from self-teaching model
-        st = ConceptSelfTeacher(n_features, hyp_space_type, sampling)
+        st = ConceptSelfTeacher(n_features, hyp_space_type)
         st.update_learner_posterior()
         st.update_self_teaching_posterior()
-        self_teacher_prob_one = st.self_teaching_posterior[0, :, 0]
+        self_teacher_prob_one = st.self_teaching_posterior
 
         # update learner posterior after a single observation
         updated_learner_posterior = st.learner_posterior[:, x, y]
@@ -142,7 +144,7 @@ def run_second_feature_boundary_simulations():
         # update learner and self-teacher after a single observation
         st.update_learner_posterior()
         st.update_self_teaching_posterior()
-        self_teacher_prob_two = st.self_teaching_posterior[0, :, 0]
+        self_teacher_prob_two = st.self_teaching_posterior
 
         # plot second feature prob
         plt.subplot(2, 2, i+1)
@@ -172,7 +174,6 @@ def run_three_feature_line_simulations():
     n_hyp = 6
     n_features = 3
     n_labels = 2
-    sampling = "max"
 
     # feature, label pairs
     xs = [0, 0, 1, 1, 2, 2]
@@ -180,19 +181,19 @@ def run_three_feature_line_simulations():
 
     figure, ax = plt.subplots()
 
-    al = ConceptActiveLearner(n_features, hyp_space_type, sampling)
-    active_learning_prob_one = np.array([
-        al.expected_information_gain(x) for x in range(n_features)])
+    al = ConceptActiveLearner(n_features, hyp_space_type)
+    al.update_posterior()
+    active_learning_prob_one = al.expected_information_gain()
 
     # normalize
     active_learning_prob_one = active_learning_prob_one / \
         np.sum(active_learning_prob_one)
 
     # get predictions from self-teaching model
-    st = ConceptSelfTeacher(n_features, hyp_space_type, sampling)
+    st = ConceptSelfTeacher(n_features, hyp_space_type)
     st.update_learner_posterior()
     st.update_self_teaching_posterior()
-    self_teacher_prob_one = st.self_teaching_posterior[0, :, 0]
+    self_teacher_prob_one = st.self_teaching_posterior
 
     plt.figure()
     plt.plot(np.arange(1, n_features + 1), active_learning_prob_one,
@@ -219,23 +220,22 @@ def run_eight_feature_line_simulations():
     hyp_space_type = "line"
     n_hyp = 36
     n_features = 8
-    sampling = "max"
 
     figure, ax = plt.subplots()
 
-    al = ConceptActiveLearner(n_features, hyp_space_type, sampling)
-    active_learning_prob_one = np.array([
-        al.expected_information_gain(x) for x in range(n_features)])
+    al = ConceptActiveLearner(n_features, hyp_space_type)
+    al.update_posterior()
+    active_learning_prob_one = al.expected_information_gain()
 
     # normalize
     active_learning_prob_one = active_learning_prob_one / \
         np.sum(active_learning_prob_one)
 
     # get predictions from self-teaching model
-    st = ConceptSelfTeacher(n_features, hyp_space_type, sampling)
+    st = ConceptSelfTeacher(n_features, hyp_space_type)
     st.update_learner_posterior()
     st.update_self_teaching_posterior()
-    self_teacher_prob_one = st.self_teaching_posterior[0, :, 0]
+    self_teacher_prob_one = st.self_teaching_posterior
 
     plt.figure()
     plt.plot(np.arange(1, n_features + 1), active_learning_prob_one,
