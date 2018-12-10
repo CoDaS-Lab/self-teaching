@@ -71,10 +71,9 @@ class GraphSelfTeacher:
         teaching_prior = 1 / (self.n_observations * self.n_interventions) * \
             np.ones((self.n_hyp, self.n_observations))
 
-        # print(np.sum(teaching_prior))
-
         # p(x, y|h) \propto p(h|x, y) * p(x, y)
         int_obs_posterior = self.learner_posterior * teaching_prior
+
         # normalize by Z
         int_obs_posterior = np.divide(int_obs_posterior.T, np.sum(
             int_obs_posterior, axis=1)).T
@@ -86,22 +85,14 @@ class GraphSelfTeacher:
         # p(x, y, g) = p(x, y| g) * p(g)
         joint_self_teaching_posterior = int_obs_posterior * self_teaching_hyp_prior
 
-        # \sum_g p(x, y, g)
-        self_teaching_posterior_original = [[np.sum(
+        # \sum_g \sum_y p(x, y, g)
+        self_teaching_posterior = [[np.sum(
             joint_self_teaching_posterior[i][self.interventions == j])
             for j in range(self.n_interventions)] for i in range(self.n_hyp)]
-        self_teaching_posterior_original = np.sum(
-            self_teaching_posterior_original, axis=0)
+        self_teaching_posterior = np.sum(
+            self_teaching_posterior, axis=0)
 
-        # original code
-        self_teaching_posterior_two = np.sum(
-            joint_self_teaching_posterior, axis=0)
-        # print(self_teaching_posterior_two)
-        # self_teaching_posterior_original = [np.sum(
-        #     self_teaching_posterior_original[self.interventions == i])
-        #     for i in range(self.n_interventions)]
-
-        return self_teaching_posterior_original
+        return self_teaching_posterior
 
     def update_teacher_posterior(self):
         # initialize empty posterior
