@@ -5,5 +5,5 @@ def read_file(fpath, ext='.txt'):
 
     # later variants will consider other file types
     if ext == '.txt':
-        return np.asarray(np.loadtxt(fpath))
+        return np.asarray(np.genfromtxt(fpath, delimiter=','))
 
